@@ -96,8 +96,8 @@ const options: NextAuthOptions = {
         return false;
       }
     },
-    async redirect({ url, baseUrl }: { url: string; baseUrl: string }) {
-      return baseUrl + "/";
+    async redirect({  baseUrl }: {  baseUrl: string }) {
+      return baseUrl + "/library";
     },
     async jwt({ token, account, user }: { token: Token; account?: Account; user?: NextAuthUser }) {
       if (account) {

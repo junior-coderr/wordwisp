@@ -91,40 +91,53 @@ export default function Home() {
       <div className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-300 ${
         isScrolled ? 'bg-[#5956E9]/80 backdrop-blur-sm' : 'bg-transparent'
       }`}>
-        <div className="max-w-[1500px] mx-auto">
-          <header className="flex justify-between items-center p-4">
-            <div className="flex items-center gap-2">
-              <svg
-                className="w-8 h-8 text-white"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M2 6C2 4.89543 2.89543 4 4 4H20C21.1046 4 22 4.89543 22 6V18C22 19.1046 21.1046 20 20 20H4C2.89543 20 2 19.1046 2 18V6Z"
-                  className="stroke-current"
-                  strokeWidth="1.5"
+        <div className="max-w-[1500px] mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-2 group">
+              <div className="relative w-8 h-8">
+                <svg
+                  className="w-8 h-8 text-white transform transition-transform duration-300 group-hover:scale-110"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path 
+                    className="transition-all duration-300"
+                    d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" 
+                    stroke="currentColor" 
+                    strokeWidth="1.5"
+                  />
+                  <motion.path
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 1.5, ease: "easeInOut" }}
+                    d="M8 9.5c0-.828.672-1.5 1.5-1.5.828 0 1.5.672 1.5 1.5v5c0 .828-.672 1.5-1.5 1.5-.828 0-1.5-.672-1.5-1.5v-5zM13 9.5c0-.828.672-1.5 1.5-1.5.828 0 1.5.672 1.5 1.5v5c0 .828-.672 1.5-1.5 1.5-.828 0-1.5-.672-1.5-1.5v-5z"
+                    fill="currentColor"
+                  />
+                  <motion.circle
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ duration: 0.3, delay: 0.5 }}
+                    cx="12"
+                    cy="12"
+                    r="2"
+                    fill="currentColor"
+                  />
+                </svg>
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                  className="absolute -right-1 -top-1 w-3 h-3 bg-white rounded-full border-2 border-[#5956E9]"
                 />
-                <path
-                  d="M12 8V16M9 8.5V15.5M15 8.5V15.5M6 9V15M18 9V15"
-                  className="stroke-current"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="2"
-                  className="fill-current"
-                />
-                <path
-                  d="M7 4C7 2.89543 7.89543 2 9 2H15C16.1046 2 17 2.89543 17 4V4H7V4Z"
-                  className="fill-current"
-                />
-              </svg>
-              <h1 onClick={()=>scrollToSection(heroRef)} className="text-2xl font-bold text-white bg-gradient-to-r from-white to-purple-200 text-transparent bg-clip-text select-none cursor-pointer">Wordwisp</h1>
-            </div>
-            
+              </div>
+              <div className="hidden sm:flex flex-col">
+                <h1 className="text-2xl font-bold text-white leading-none">Wordwisp</h1>
+                <span className="text-[10px] text-white/60 tracking-wider">AUDIO STORIES</span>
+              </div>
+            </Link>
+
+            {/* Rest of the existing header content */}
             <nav className="hidden md:flex gap-8">
               {menuItems.map((item) => (
                 <button 
@@ -213,7 +226,7 @@ export default function Home() {
                 }`}></span>
               </div>
             </Button>
-          </header>
+          </div>
         </div>
       </div>
 
