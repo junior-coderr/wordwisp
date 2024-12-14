@@ -11,7 +11,9 @@ import {
   RotateCw, 
   Play, 
   Pause, 
-  Volume2 
+  Volume2,
+  Download, // Add this import
+  Loader2 // Add this import
 } from 'lucide-react';
 
 export default function ListenPage({ params }: { params: { id: string } }) {
@@ -22,6 +24,7 @@ export default function ListenPage({ params }: { params: { id: string } }) {
   const [currentTime, setCurrentTime] = useState(0);
   const [volume, setVolume] = useState(0.8);
   const [isLoading, setIsLoading] = useState(true);
+  const [isBuffering, setIsBuffering] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Mock data - replace with real data
@@ -66,6 +69,25 @@ export default function ListenPage({ params }: { params: { id: string } }) {
     };
   }, [story.audioUrl]);
 
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleWaiting = () => setIsBuffering(true);
+    const handlePlaying = () => setIsBuffering(false);
+    const handleCanPlay = () => setIsBuffering(false);
+
+    audio.addEventListener('waiting', handleWaiting);
+    audio.addEventListener('playing', handlePlaying);
+    audio.addEventListener('canplay', handleCanPlay);
+
+    return () => {
+      audio.removeEventListener('waiting', handleWaiting);
+      audio.removeEventListener('playing', handlePlaying);
+      audio.removeEventListener('canplay', handleCanPlay);
+    };
+  }, []);
+
   const togglePlayPause = () => {
     if (audioRef.current) {
       if (isPlaying) {
@@ -109,149 +131,213 @@ export default function ListenPage({ params }: { params: { id: string } }) {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-[#5956E9] to-[#393790] p-4 md:p-8">
-      {/* Updated Back Button */}
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        className="mb-8"
-      >
-        <Button
-          variant="ghost"
-          className="text-white hover:bg-white/20 hover:text-white transition-all group flex items-center text-lg"
-          onClick={() => router.back()}
-        >
-          <ChevronLeft className="w-8 h-8 mr-2 group-hover:scale-110 transition-transform" />
-          Back
-        </Button>
-      </motion.div>
+  const handleDownload = async () => {
+    try {
+      const response = await fetch(story.audioUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${story.title}.mp3`; // or whatever extension your audio has
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Download failed:', error);
+    }
+  };
 
-      <audio
-        ref={audioRef}
-        src={story.audioUrl}
-        onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={() => {
-          if (audioRef.current && isFinite(audioRef.current.duration)) {
-            setDuration(audioRef.current.duration);
-          }
-        }}
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-[#5956E9] via-[#4745BD] to-[#393790] p-4 md:p-8 relative">
+      {/* Background blur effect using cover image */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center opacity-10 blur-3xl"
+        style={{ backgroundImage: `url(${story.cover})` }}
       />
 
-      {isLoading ? (
-        <div className="max-w-4xl mx-auto">
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex flex-col items-center gap-8"
+      <div className="relative z-10">
+        {/* Updated Back Button with smoother hover */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="mb-12"
+        >
+          <Button
+            variant="ghost"
+            className="text-white/90 hover:text-white hover:bg-white/20 transition-all duration-300 group flex items-center text-lg"
+            onClick={() => router.back()}
           >
-            {/* Loading UI */}
-            <div className="relative w-64 h-80 rounded-2xl overflow-hidden shadow-2xl bg-white/10 animate-pulse" />
-            <div className="text-center space-y-4 w-full max-w-sm">
-              <div className="h-8 bg-white/10 rounded animate-pulse" />
-              <div className="h-6 bg-white/10 rounded animate-pulse w-3/4 mx-auto" />
-              <div className="h-6 bg-white/10 rounded animate-pulse w-1/2 mx-auto" />
-            </div>
-            <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-6 w-full mt-8">
-              <div className="h-2 bg-white/10 rounded animate-pulse mb-8" />
-              <div className="flex justify-center">
-                <div className="w-16 h-16 rounded-full bg-white/10 animate-pulse" />
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      ) : (
-        <div className="max-w-4xl mx-auto">
-          {/* Existing content */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col md:flex-row items-center gap-8 mb-12"
-          >
-            <div className="relative w-64 h-80 rounded-2xl overflow-hidden shadow-2xl border-4 border-white/30">
-              <Image src={story.cover} alt={story.title} fill className="object-cover" />
-            </div>
-            <div className="text-white text-center md:text-left">
-              <h1 className="text-4xl font-bold mb-2">{story.title}</h1>
-              <p className="text-xl text-white/80 mb-4">{story.author}</p>
-              <h2 className="text-2xl font-semibold text-white/90">{story.chapter}</h2>
-            </div>
-          </motion.div>
+            <ChevronLeft className="w-8 h-8 mr-2 group-hover:-translate-x-1 transition-transform duration-300" />
+            Back
+          </Button>
+        </motion.div>
 
-          {/* Player Controls */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white/10 backdrop-blur-lg rounded-3xl p-6"
-          >
-            {/* Progress Bar with cursor pointer */}
-            <div className="mb-6">
-              <div className="cursor-pointer">
-                <Slider
-                  value={[progress]}
-                  max={100}
-                  step={0.1}
-                  onValueChange={handleSliderChange}
-                  className="cursor-pointer hover:opacity-80 transition-opacity"
+        <audio
+          ref={audioRef}
+          src={story.audioUrl}
+          onTimeUpdate={handleTimeUpdate}
+          onLoadedMetadata={() => {
+            if (audioRef.current && isFinite(audioRef.current.duration)) {
+              setDuration(audioRef.current.duration);
+            }
+          }}
+        />
+
+        {isLoading ? (
+          <div className="max-w-4xl mx-auto">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex flex-col items-center gap-8"
+            >
+              {/* Enhanced Loading UI with pulse animation */}
+              <div className="relative w-64 h-80 rounded-2xl overflow-hidden shadow-2xl">
+                <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-white/5 animate-pulse" />
+                <div className="absolute inset-0 backdrop-blur-sm" />
+              </div>
+              <div className="text-center space-y-4 w-full max-w-sm">
+                <div className="h-8 bg-gradient-to-r from-white/20 to-white/10 rounded animate-pulse" />
+                <div className="h-6 bg-gradient-to-r from-white/15 to-white/5 rounded animate-pulse w-3/4 mx-auto" />
+                <div className="h-6 bg-gradient-to-r from-white/10 to-white/5 rounded animate-pulse w-1/2 mx-auto" />
+              </div>
+            </motion.div>
+          </div>
+        ) : (
+          <div className="max-w-4xl mx-auto">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-col md:flex-row items-center gap-12 mb-16"
+            >
+              {/* Enhanced Book Cover */}
+              <div className="relative w-72 h-96 rounded-2xl overflow-hidden shadow-2xl border-4 border-white/30 group transition-transform duration-300 ">
+                <Image 
+                  src={story.cover} 
+                  alt={story.title} 
+                  fill 
+                  className="object-cover transition-transform duration-500" 
                 />
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/50" />
               </div>
-              <div className="flex justify-between text-white/80 text-sm mt-2">
-                <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(duration)}</span>
+              
+              {/* Enhanced Text Content */}
+              <div className="text-white text-center md:text-left">
+                <motion.h1 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white to-white/80"
+                >
+                  {story.title}
+                </motion.h1>
+                <motion.p 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="text-2xl text-white/80 mb-6"
+                >
+                  {story.author}
+                </motion.p>
+                <motion.h2 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="text-3xl font-semibold text-white/90"
+                >
+                  {story.chapter}
+                </motion.h2>
               </div>
-            </div>
+            </motion.div>
 
-            {/* Main Controls */}
-            <div className="flex items-center justify-center gap-8">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-white hover:bg-white/20 transition-colors hover:scale-105"
-                onClick={() => {
-                  if (audioRef.current) audioRef.current.currentTime -= 10;
-                }}
-              >
-                <RotateCcw className="w-10 h-10" />
-              </Button>
+            {/* Enhanced Player Controls */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white/10 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/20"
+            >
+              {/* Progress Bar */}
+              <div className="mb-8">
+                <div className="cursor-pointer">
+                  <Slider
+                    value={[progress]}
+                    max={100}
+                    step={0.1}
+                    onValueChange={handleSliderChange}
+                    className="cursor-pointer hover:opacity-90 transition-opacity"
+                  />
+                </div>
+                <div className="flex justify-between text-white/90 text-sm mt-3 font-medium">
+                  <span>{formatTime(currentTime)}</span>
+                  <span>{formatTime(duration)}</span>
+                </div>
+              </div>
 
-              <Button
-                variant="ghost"
-                size="icon"
-                className="w-20 h-20 rounded-full bg-white/20 hover:bg-white/30 transition-all hover:scale-105 text-white hover:text-white"
-                onClick={togglePlayPause}
-              >
-                {isPlaying ? (
-                  <Pause className="w-12 h-12" />
-                ) : (
-                  <Play className="w-12 h-12" />
-                )}
-              </Button>
+              {/* Main Controls with enhanced hover effects */}
+              <div className="flex items-center justify-center gap-12 relative">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-white/90 hover:text-white hover:bg-white/20 transition-all duration-300 hover:scale-110"
+                  onClick={() => {
+                    if (audioRef.current) audioRef.current.currentTime -= 10;
+                  }}
+                >
+                  <RotateCcw className="w-10 h-10" />
+                </Button>
 
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-white hover:bg-white/20 transition-colors hover:scale-105"
-                onClick={() => {
-                  if (audioRef.current) audioRef.current.currentTime += 10;
-                }}
-              >
-                <RotateCw className="w-10 h-10" />
-              </Button>
-            </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="w-24 h-24 rounded-full bg-white/20 hover:bg-white/30 transition-all duration-300 hover:scale-105 text-white hover:text-white shadow-lg flex items-center justify-center"
+                  onClick={togglePlayPause}
+                  disabled={isBuffering}
+                >
+                  {isBuffering ? (
+                    <Loader2 className="w-14 h-14 animate-spin" />
+                  ) : isPlaying ? (
+                    <Pause className="w-14 h-14" />
+                  ) : (
+                    <Play className="w-14 h-14" style={{ marginLeft: '4px' }} />
+                  )}
+                </Button>
 
-            {/* Volume Control */}
-            <div className="flex items-center gap-2 mt-6">
-              <Volume2 className="w-7 h-7 text-white" />
-              <Slider
-                value={[volume * 100]}
-                max={100}
-                onValueChange={(value) => setVolume(value[0] / 100)}
-                className="w-32"
-              />
-            </div>
-          </motion.div>
-        </div>
-      )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-white/90 hover:text-white hover:bg-white/20 transition-all duration-300 hover:scale-110"
+                  onClick={() => {
+                    if (audioRef.current) audioRef.current.currentTime += 10;
+                  }}
+                >
+                  <RotateCw className="w-10 h-10" />
+                </Button>
+              </div>
+
+              {/* Volume Control and Download Button */}
+              <div className="flex items-center justify-between mt-8 px-4">
+                <div className="flex items-center gap-3">
+                  <Volume2 className="w-6 h-6 text-white/90" />
+                  <Slider
+                    value={[volume * 100]}
+                    max={100}
+                    onValueChange={(value) => setVolume(value[0] / 100)}
+                    className="w-40"
+                  />
+                </div>
+                
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-white/90 hover:text-white hover:bg-white/20 transition-all duration-300 hover:scale-110 group"
+                  onClick={handleDownload}
+                >
+                  <Download className="w-6 h-6 group-hover:translate-y-1 transition-transform" />
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
