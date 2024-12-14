@@ -14,7 +14,7 @@ const BackgroundShapes = () => {
   const shapes = [
     { 
       size: '120px', 
-      initialX: '-100%',
+      initialX: '10%',  // Changed from -100%
       finalX: '10%',
       top: '40%', 
       delay: 0.5,
@@ -22,7 +22,7 @@ const BackgroundShapes = () => {
     },
     { 
       size: '100px', 
-      initialX: '200%',
+      initialX: '20%',  // Changed from 200%
       finalX: '20%',
       bottom: '20%', 
       delay: 0.8,
@@ -30,7 +30,7 @@ const BackgroundShapes = () => {
     },
     { 
       size: '150px', 
-      initialY: '200%',
+      initialY: '30%',  // Changed from 200%
       finalY: '30%',
       right: '15%', 
       delay: 1.2,
@@ -82,19 +82,14 @@ const BackgroundShapes = () => {
             height: shape.size,
             x: shape.initialX,
             y: shape.initialY,
-            opacity: 0,
-            scale: 0.5
+            opacity: 0.8,  // Changed from 0
+            scale: 0.9    // Changed from 0.5
           }}
           animate={{ 
             x: shape.finalX,
             y: shape.finalY,
             opacity: 1,
             scale: 1
-          }}
-          transition={{
-            duration: 1.5,
-            delay: shape.delay,
-            ease: "easeOut"
           }}
           style={{
             top: shape.top,
@@ -111,7 +106,13 @@ const BackgroundShapes = () => {
           transition={{
             duration: shape.duration,
             repeat: Infinity,
-            ease: "linear"
+            ease: "easeInOut",  // Changed from linear
+            x: {
+              repeatType: "mirror"  // Added for smoother back-and-forth
+            },
+            y: {
+              repeatType: "mirror"  // Added for smoother back-and-forth
+            }
           }}
         />
       ))}

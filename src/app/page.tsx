@@ -9,13 +9,16 @@ import BookIcon from '@/components/BookIcon';
 import Link from 'next/link'; // Add this import at the top
 import LoginModal from '@/components/LoginModal';
 import { useRouter } from 'next/navigation'; // Add this import at the top
+import { useSession, signOut } from 'next-auth/react'; // Add this import at the top
 
 const inter = Inter({ subsets: ['latin'] });
 
 export default function Home() {
+  const { data: session } = useSession(); // Add this line
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isProfileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const heroRef = useRef<HTMLElement>(null);
   const exploreRef = useRef<HTMLElement>(null);
   const router = useRouter();
@@ -27,6 +30,17 @@ export default function Home() {
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!(event.target as Element).closest('.profile-dropdown')) {
+        setProfileDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const scrollToSection = (ref: React.RefObject<HTMLElement>) => {
@@ -123,17 +137,64 @@ export default function Home() {
               ))}
             </nav>
 
-            <Button variant="secondary" className="hidden md:flex gap-2" onClick={handleLoginClick}>
-              <svg
-                className="w-4 h-4"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path fillRule="evenodd" d="M7.5 3.75A1.5 1.5 0 006 5.25v13.5a1.5 1.5 0 001.5 1.5h6a1.5 1.5 0 001.5-1.5V15a.75.75 0 011.5 0v3.75a3 3 0 01-3 3h-6a3 3 0 01-3-3V5.25a3 3 0 013-3h6a3 3 0 013 3V9A.75.75 0 0115 9V5.25a1.5 1.5 0 00-1.5-1.5h-6zm10.72 4.72a.75.75 0 011.06 0l3 3a.75.75 0 010 1.06l-3 3a.75.75 0 11-1.06-1.06l1.72-1.72H9a.75.75 0 010-1.5h10.94l-1.72-1.72a.75.75 0 010-1.06z" clipRule="evenodd" />
-              </svg>
-              Login
-            </Button>
+            {session ? (
+              <div className="hidden md:flex items-center gap-4 relative profile-dropdown">
+                <button
+                  onClick={() => setProfileDropdownOpen(!isProfileDropdownOpen)}
+                  className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/50 hover:border-white transition-colors focus:outline-none"
+                >
+                  <Image
+                    src={session.user?.image || '/default-avatar.png'}
+                    alt="Profile"
+                    width={40}
+                    height={40}
+                    className="w-full h-full object-cover"
+                  />
+                </button>
+
+                <AnimatePresence>
+                  {isProfileDropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="absolute right-0 top-12 w-56 bg-white rounded-xl shadow-lg ring-1 ring-black/5 z-50"
+                    >
+                      <div className="px-4 py-3 border-b border-gray-100">
+                        <p className="text-sm font-semibold text-gray-900">{session.user?.name}</p>
+                        <p className="text-xs text-gray-500 truncate">{session.user?.email}</p>
+                      </div>
+                      <button
+                        onClick={() => signOut()}
+                        className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:opacity-80 flex items-center gap-2"
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                        >
+                          <path fillRule="evenodd" d="M16.5 3.75a1.5 1.5 0 0 1 1.5 1.5v13.5a1.5 1.5 0 0 1-1.5 1.5h-6a1.5 1.5 0 0 1-1.5-1.5V15a.75.75 0 0 0-1.5 0v3.75a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V5.25a3 3 0 0 0-3-3h-6a3 3 0 0 0-3 3V9A.75.75 0 1 0 9 9V5.25a1.5 1.5 0 0 1 1.5-1.5h6ZM5.78 8.47a.75.75 0 0 0-1.06 0l-3 3a.75.75 0 0 0 0 1.06l3 3a.75.75 0 0 0 1.06-1.06l-1.72-1.72H15a.75.75 0 0 0 0-1.5H4.06l1.72-1.72a.75.75 0 0 0 0-1.06Z" clipRule="evenodd" />
+                        </svg>
+                        Logout
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ) : (
+              <Button variant="secondary" className="hidden md:flex gap-2" onClick={handleLoginClick}>
+                <svg
+                  className="w-4 h-4"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path fillRule="evenodd" d="M7.5 3.75A1.5 1.5 0 006 5.25v13.5a1.5 1.5 0 001.5 1.5h6a1.5 1.5 0 001.5-1.5V15a.75.75 0 011.5 0v3.75a3 3 0 01-3 3h-6a3 3 0 01-3-3V5.25a3 3 0 013-3h6a3 3 0 013 3V9A.75.75 0 0115 9V5.25a1.5 1.5 0 00-1.5-1.5h-6zm10.72 4.72a.75.75 0 011.06 0l3 3a.75.75 0 010 1.06l-3 3a.75.75 0 11-1.06-1.06l1.72-1.72H9a.75.75 0 010-1.5h10.94l-1.72-1.72a.75.75 0 010-1.06z" clipRule="evenodd" />
+                </svg>
+                Login
+              </Button>
+            )}
 
             <Button 
               variant="ghost" 
@@ -159,22 +220,24 @@ export default function Home() {
       {/* Main Content */}
       <main>
         {/* Hero Section */}
-        <section ref={heroRef} className="min-h-[800px] h-screen flex items-center justify-center relative">
-          <div className="w-full text-center px-4 py-20">
+        <section ref={heroRef} className="min-h-[800px] h-screen flex items-center justify-center relative pt-20 md:pt-24">
+          <div className="w-full text-center px-4 py-20 space-y-8 md:space-y-12 lg:space-y-16">
             <motion.h2 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
-              className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold text-white leading-tight tracking-tight"
+              className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold text-white leading-[1.1] md:leading-[1.2] tracking-tight mb-8 md:mb-12 max-w-[18ch] mx-auto"
             >
-              Stories That<br className="sm:hidden" />
-              <span className="bg-gradient-to-r from-white to-purple-200 text-transparent bg-clip-text"> Whisper to You</span>
+              Stories That{' '}
+              <span className="bg-gradient-to-r from-white to-purple-200 text-transparent bg-clip-text whitespace-nowrap">
+                Whisper to You
+              </span>
             </motion.h2>
             <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.2 }}
-              className="text-xl sm:text-2xl md:text-3xl font-medium text-white/90 mt-6 sm:mt-8 max-w-3xl mx-auto"
+              className="text-xl sm:text-2xl md:text-3xl font-medium text-white/90 mt-8 md:mt-12 max-w-3xl mx-auto px-4"
             >
               Listen to your favorite stories come to life through immersive narration
             </motion.p>
@@ -185,12 +248,12 @@ export default function Home() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 1.2 }}
-              className="mt-12 flex justify-center items-center"
+              className="mt-16 md:mt-20 flex justify-center items-center"
             >
               <Link href="/library">
                 <Button 
                   variant="secondary" 
-                  className="px-8 py-6 mt-4 text-lg font-semibold flex items-center gap-2 hover:scale-105 transition-transform"
+                  className="px-8 py-6 text-lg md:text-xl font-semibold flex items-center gap-3 hover:scale-105 transition-transform"
                 >
                   <svg
                     className="w-6 h-6 text-purple-600"
@@ -208,24 +271,24 @@ export default function Home() {
         </section>
 
         {/* Explore Section */}
-        <section ref={exploreRef} className="min-h-screen w-full px-4 py-16 relative bg-white">
+        <section ref={exploreRef} className="min-h-screen w-full px-4 py-24 md:py-32 relative bg-white">
           <div className="max-w-7xl mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.8 }}
-              className="text-center mb-12"
+              className="text-center mb-16 md:mb-24 space-y-6"
             >
-              <h2 className="text-4xl md:text-5xl font-bold text-[#5956E9] mb-4">
+              <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-[#5956E9] mb-6">
                 Popular Stories
               </h2>
-              <p className="text-gray-600 text-lg max-w-2xl mx-auto">
+              <p className="text-gray-600 text-lg md:text-xl max-w-2xl mx-auto px-4">
                 Discover our collection of bestselling audiobooks that have captured hearts worldwide
               </p>
             </motion.div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12 lg:gap-16">
               {books.map((book, index) => (
                 <Link href={`/listen/${index+1}`} key={book.title}>
                   <motion.div
@@ -233,7 +296,7 @@ export default function Home() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.5, delay: index * 0.1 }}
-                    className="bg-gray-50 rounded-2xl p-4 hover:bg-gray-100 transition-all duration-300 cursor-pointer group shadow-lg"
+                    className="bg-gray-50 rounded-2xl p-6 hover:bg-gray-100 transition-all duration-300 cursor-pointer group shadow-lg"
                   >
                     <div className="aspect-[3/4] rounded-xl overflow-hidden mb-4 relative">
                       <Image
@@ -245,20 +308,22 @@ export default function Home() {
                         priority={index === 0}
                       />
                     </div>
-                    <span className="text-gray-500 text-sm">{book.category}</span>
-                    <h3 className="text-xl font-semibold text-gray-900 mt-2">{book.title}</h3>
-                    <p className="text-gray-600">{book.author}</p>
-                    <Button variant="ghost" className="w-full mt-4 text-[#5956E9] border border-[#5956E9]/20 hover:bg-[#5956E9]/10">
-                      <svg
-                        className="w-5 h-5 mr-2"
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                      >
-                        <path d="M12 3.75a6.715 6.715 0 00-3.722 1.118.75.75 0 11-.828-1.25 8.25 8.25 0 0113.1 6.615c0 3.592-4.377 8.267-8.55 8.267-4.173 0-8.55-4.675-8.55-8.267A8.25 8.25 0 0114.25 4.607a.75.75 0 11.326 1.464A6.715 6.715 0 0012 3.75zM5.25 12c0 2.726 3.397 6.767 6.75 6.767 3.353 0 6.75-4.041 6.75-6.767 0-3.725-2.988-6.75-6.75-6.75S5.25 8.275 5.25 12zM12 9a3 3 0 100 6 3 3 0 000-6z" />
-                      </svg>
-                      Listen Now
-                    </Button>
+                    <div className="mt-4 space-y-2">
+                      <span className="text-gray-500 text-sm md:text-base">{book.category}</span>
+                      <h3 className="text-xl md:text-2xl font-semibold text-gray-900 mt-2">{book.title}</h3>
+                      <p className="text-gray-600 text-lg">{book.author}</p>
+                      <Button variant="ghost" className="w-full mt-6 text-[#5956E9] border border-[#5956E9]/20 hover:bg-[#5956E9]/10 py-6">
+                        <svg
+                          className="w-5 h-5 mr-2"
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                        >
+                          <path d="M12 3.75a6.715 6.715 0 00-3.722 1.118.75.75 0 11-.828-1.25 8.25 8.25 0 0113.1 6.615c0 3.592-4.377 8.267-8.55 8.267-4.173 0-8.55-4.675-8.55-8.267A8.25 8.25 0 0114.25 4.607a.75.75 0 11.326 1.464A6.715 6.715 0 0012 3.75zM5.25 12c0 2.726 3.397 6.767 6.75 6.767 3.353 0 6.75-4.041 6.75-6.767 0-3.725-2.988-6.75-6.75-6.75S5.25 8.275 5.25 12zM12 9a3 3 0 100 6 3 3 0 000-6z" />
+                        </svg>
+                        Listen Now
+                      </Button>
+                    </div>
                   </motion.div>
                 </Link>
               ))}
@@ -283,6 +348,23 @@ export default function Home() {
             className="fixed inset-0 bg-[#5956E9] p-4 md:hidden z-40 pt-20 border-t border-white/10"
           >
             <nav className="flex flex-col gap-4">
+              {session && (
+                <div className="flex items-center gap-3 pb-4 border-b border-white/10">
+                  <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white/50">
+                    <Image
+                      src={session.user?.image || '/default-avatar.png'}
+                      alt="Profile"
+                      width={48}
+                      height={48}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div>
+                    <p className="text-white font-semibold">{session.user?.name}</p>
+                    <p className="text-white/70 text-sm truncate">{session.user?.email}</p>
+                  </div>
+                </div>
+              )}
               {menuItems.map((item) => (
                 <motion.button
                   key={item.text}
@@ -302,17 +384,35 @@ export default function Home() {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ delay: 0.4 }}
               >
-                <Button variant="secondary" className="flex gap-2 w-full justify-center" onClick={handleLoginClick}>
-                  <svg
-                    className="w-4 h-4"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
+                {session ? (
+                  <Button 
+                    variant="secondary" 
+                    className="flex gap-2 w-full justify-center text-red-600 hover:text-red-700" 
+                    onClick={() => signOut()}
                   >
-                    <path fillRule="evenodd" d="M7.5 3.75A1.5 1.5 0 006 5.25v13.5a1.5 1.5 0 001.5 1.5h6a1.5 1.5 0 001.5-1.5V15a.75.75 0 011.5 0v3.75a3 3 0 01-3 3h-6a3 3 0 01-3-3V5.25a3 3 0 013-3h6a3 3 0 013 3V9A.75.75 0 0115 9V5.25a1.5 1.5 0 00-1.5-1.5h-6zm10.72 4.72a.75.75 0 011.06 0l3 3a.75.75 0 010 1.06l-3 3a.75.75 0 11-1.06-1.06l1.72-1.72H9a.75.75 0 010-1.5h10.94l-1.72-1.72a.75.75 0 010-1.06z" clipRule="evenodd" />
-                  </svg>
-                  Login
-                </Button>
+                    <svg
+                      className="w-4 h-4"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
+                      <path fillRule="evenodd" d="M16.5 3.75a1.5 1.5 0 0 1 1.5 1.5v13.5a1.5 1.5 0 0 1-1.5 1.5h-6a1.5 1.5 0 0 1-1.5-1.5V15a.75.75 0 0 0-1.5 0v3.75a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V5.25a3 3 0 0 0-3-3h-6a3 3 0 0 0-3 3V9A.75.75 0 1 0 9 9V5.25a1.5 1.5 0 0 1 1.5-1.5h6ZM5.78 8.47a.75.75 0 0 0-1.06 0l-3 3a.75.75 0 0 0 0 1.06l3 3a.75.75 0 0 0 1.06-1.06l-1.72-1.72H15a.75.75 0 0 0 0-1.5H4.06l1.72-1.72a.75.75 0 0 0 0-1.06Z" clipRule="evenodd" />
+                    </svg>
+                    Logout
+                  </Button>
+                ) : (
+                  <Button variant="secondary" className="flex gap-2 w-full justify-center" onClick={handleLoginClick}>
+                    <svg
+                      className="w-4 h-4"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
+                      <path fillRule="evenodd" d="M7.5 3.75A1.5 1.5 0 006 5.25v13.5a1.5 1.5 0 001.5 1.5h6a1.5 1.5 0 001.5-1.5V15a.75.75 0 011.5 0v3.75a3 3 0 01-3 3h-6a3 3 0 01-3-3V5.25a3 3 0 013-3h6a3 3 0 013 3V9A.75.75 0 0115 9V5.25a1.5 1.5 0 00-1.5-1.5h-6zm10.72 4.72a.75.75 0 011.06 0l3 3a.75.75 0 010 1.06l-3 3a.75.75 0 11-1.06-1.06l1.72-1.72H9a.75.75 0 010-1.5h10.94l-1.72-1.72a.75.75 0 010-1.06z" clipRule="evenodd" />
+                    </svg>
+                    Login
+                  </Button>
+                )}
               </motion.div>
             </nav>
           </motion.div>
