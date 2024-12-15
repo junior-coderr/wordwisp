@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'; // Add this import
 import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import LoginModal from '@/components/LoginModal'; // Add this import
+import { useRouter, useSearchParams } from 'next/navigation';
 
 const categories = [
   { id: 'all', label: 'All' },
@@ -41,7 +42,7 @@ const allBooks = [
     title: "Whispers of the Past",
     author: "Emily Carter",
     image: "https://images.unsplash.com/photo-1512820790803-83ca734da794",
-    category: "Historical Fiction",
+    category: "Mystery",
     price: 399,
     description: "A captivating tale set in the Victorian era.",
     duration: "10h 45m"
@@ -51,7 +52,7 @@ const allBooks = [
     title: "The Last Frontier",
     author: "Michael Brown",
     image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f",
-    category: "Adventure",
+    category: "Mystery",
     price: 299,
     description: "An exhilarating adventure in the wild.",
     duration: "11h 20m"
@@ -61,7 +62,7 @@ const allBooks = [
     title: "Echoes of Eternity",
     author: "Laura White",
     image: "https://images.unsplash.com/photo-1532012197267-da84d127e765",
-    category: "Fantasy",
+    category: "Mystery",
     price: 349,
     description: "A magical journey through a mystical land.",
     duration: "13h 50m"
@@ -95,16 +96,21 @@ const allBooks = [
     price: 279,
     description: "A romantic journey through the city of love.",
     duration: "9h 30m"
-  }
+  },
 ];
 
 export default function LibraryPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session } = useSession();
   const [isProfileDropdownOpen, setProfileDropdownOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState(searchParams.get('genre') || 'all');
   const [filteredBooks, setFilteredBooks] = useState(allBooks);
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isLanguageDropdownOpen, setLanguageDropdownOpen] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState('Hindi');
+  const [isMobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Add click outside handler
   useEffect(() => {
@@ -130,6 +136,18 @@ export default function LibraryPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Add click outside handler for language dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!(event.target as Element).closest('.language-dropdown')) {
+        setLanguageDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   useEffect(() => {
     if (selectedCategory === 'all') {
       setFilteredBooks(allBooks);
@@ -145,11 +163,36 @@ export default function LibraryPage() {
     setIsLoginModalOpen(true);
   };
 
+  // Add this new useEffect for mobile nav
+  useEffect(() => {
+    if (isMobileNavOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isMobileNavOpen]);
+
+  // Update URL when category changes
+  const handleCategoryChange = (categoryId: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (categoryId === 'all') {
+      params.delete('genre');
+    } else {
+      params.set('genre', categoryId);
+    }
+    router.push(`/library?${params.toString()}`);
+    setSelectedCategory(categoryId);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-sm border-b">
         <div className="max-w-[1500px] mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4">
+            {/* Logo */}
             <Link href="/" className="flex items-center gap-2 group">
               <div className="relative w-8 h-8">
                 <svg
@@ -194,13 +237,14 @@ export default function LibraryPage() {
               </div>
             </Link>
 
-            <nav className="flex items-center gap-6">
-              <div className="hidden md:flex items-center gap-3 relative">
+            {/* Desktop Navigation */}
+            <nav className="hidden lg:flex items-center gap-6 flex-1 justify-end">
+              <div className="flex items-center gap-3 relative">
                 <div className="flex bg-gray-100 p-1 rounded-full">
                   {categories.map((category) => (
                     <button
                       key={category.id}
-                      onClick={() => setSelectedCategory(category.id)}
+                      onClick={() => handleCategoryChange(category.id)}
                       className={`
                         px-4 py-1.5 rounded-full text-sm 
                         transition-all duration-300
@@ -223,21 +267,21 @@ export default function LibraryPage() {
                   ))}
                 </div>
               </div>
-              
-              {/* Mobile categories dropdown */}
-              <div className="md:hidden relative category-dropdown">
+
+              {/* Language Dropdown */}
+              <div className="relative language-dropdown">
                 <button
-                  onClick={() => setMobileMenuOpen(!isMobileMenuOpen)}
+                  onClick={() => setLanguageDropdownOpen(!isLanguageDropdownOpen)}
                   className="px-3 py-1.5 rounded-lg text-sm bg-gray-100 text-gray-600 
-                    hover:bg-gray-200 transition-colors flex items-center gap-2 w-40
+                    hover:bg-gray-200 transition-colors flex items-center gap-2
                     border border-transparent focus:border-[#5956E9]/20 focus:bg-white"
                 >
-                  <span className="flex-1 text-left truncate">
-                    {categories.find(c => c.id === selectedCategory)?.label}
+                  <span className="flex-1 text-left">
+                    {selectedLanguage}
                   </span>
                   <motion.svg
                     className="w-4 h-4 flex-shrink-0"
-                    animate={{ rotate: isMobileMenuOpen ? 180 : 0 }}
+                    animate={{ rotate: isLanguageDropdownOpen ? 180 : 0 }}
                     transition={{ duration: 0.2 }}
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"
@@ -248,62 +292,36 @@ export default function LibraryPage() {
                 </button>
 
                 <AnimatePresence>
-                  {isMobileMenuOpen && (
+                  {isLanguageDropdownOpen && (
                     <motion.div
                       initial={{ opacity: 0, y: 8, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 8, scale: 0.95 }}
                       transition={{ duration: 0.2 }}
-                      className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-lg 
+                      className="absolute top-full right-0 mt-1 bg-white rounded-lg shadow-lg 
                         border border-gray-100 overflow-hidden z-50"
-                      style={{ width: 'max-content', minWidth: '100%' }}
+                      style={{ width: 'max-content', minWidth: '120px' }}
                     >
-                      {categories.map((category) => (
+                      {[ 'Hindi'].map((language) => (
                         <motion.button
-                          key={category.id}
+                          key={language}
                           onClick={() => {
-                            setSelectedCategory(category.id);
-                            setMobileMenuOpen(false);
+                            setSelectedLanguage(language);
+                            setLanguageDropdownOpen(false);
                           }}
                           className={`
                             w-full text-left px-4 py-2.5 text-sm
-                            flex items-center gap-2 relative overflow-hidden
-                            transition-all duration-200 active:scale-[0.98]
-                            ${selectedCategory === category.id
+                            flex items-center gap-2 relative
+                            transition-all duration-200
+                            ${selectedLanguage === language
                               ? 'text-[#5956E9] bg-[#5956E9]/5 font-medium'
                               : 'text-gray-600 hover:bg-[#5956E9]/5 hover:text-[#5956E9]'
                             }
                           `}
-                          whileHover={{ 
-                            backgroundColor: 'rgba(89, 86, 233, 0.05)',
-                            transition: { duration: 0.2 }
-                          }}
-                          whileTap={{ 
-                            scale: 0.98,
-                            backgroundColor: 'rgba(89, 86, 233, 0.1)'
-                          }}
+                          whileHover={{ backgroundColor: 'rgba(89, 86, 233, 0.05)' }}
+                          whileTap={{ scale: 0.98 }}
                         >
-                          <AnimatePresence>
-                            {selectedCategory === category.id && (
-                              <motion.span
-                                layoutId="activeDot"
-                                className="w-1.5 h-1.5 rounded-full bg-[#5956E9] absolute left-1"
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                exit={{ scale: 0 }}
-                                transition={{ duration: 0.2 }}
-                              />
-                            )}
-                          </AnimatePresence>
-                          <span className="ml-4 relative">
-                            {category.label}
-                            <motion.span
-                              className="absolute inset-x-0 -bottom-0.5 h-0.5 bg-[#5956E9] origin-left"
-                              initial={{ scaleX: 0 }}
-                              whileHover={{ scaleX: 1 }}
-                              transition={{ duration: 0.2 }}
-                            />
-                          </span>
+                          {language}
                         </motion.button>
                       ))}
                     </motion.div>
@@ -311,6 +329,7 @@ export default function LibraryPage() {
                 </AnimatePresence>
               </div>
 
+              {/* Profile/Login Section */}
               {session ? (
                 <div className="relative profile-dropdown">
                   <button
@@ -387,9 +406,146 @@ export default function LibraryPage() {
                 </button>
               )}
             </nav>
+
+            {/* Mobile Navigation Button */}
+            <button
+              onClick={() => setMobileNavOpen(true)}
+              className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <svg className="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
           </div>
         </div>
       </div>
+
+      {/* Mobile Navigation Drawer */}
+      <AnimatePresence>
+        {isMobileNavOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 lg:hidden"
+              onClick={() => setMobileNavOpen(false)}
+            />
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: "spring", damping: 20 }}
+              className="fixed right-0 top-0 bottom-0 w-[280px] bg-white shadow-xl z-50 lg:hidden"
+            >
+              <div className="flex flex-col h-full">
+                <div className="flex items-center justify-between p-4 border-b">
+                  <h2 className="font-semibold text-lg">Menu</h2>
+                  <button
+                    onClick={() => setMobileNavOpen(false)}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    <svg className="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                  {/* Categories */}
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-gray-500">Categories</h3>
+                    <div className="space-y-1">
+                      {categories.map((category) => (
+                        <button
+                          key={category.id}
+                          onClick={() => {
+                            handleCategoryChange(category.id);
+                            setMobileNavOpen(false);
+                          }}
+                          className={`
+                            w-full text-left px-3 py-2 rounded-lg text-sm
+                            transition-colors relative
+                            ${selectedCategory === category.id
+                              ? 'text-[#5956E9] bg-[#5956E9]/5 font-medium'
+                              : 'text-gray-600 hover:bg-gray-100'
+                            }
+                          `}
+                        >
+                          {category.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Language Selection */}
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-gray-500">Language</h3>
+                    <div className="space-y-1">
+                      {['Hindi'].map((language) => (
+                        <button
+                          key={language}
+                          onClick={() => {
+                            setSelectedLanguage(language);
+                            setMobileNavOpen(false);
+                          }}
+                          className={`
+                            w-full text-left px-3 py-2 rounded-lg text-sm
+                            transition-colors
+                            ${selectedLanguage === language
+                              ? 'text-[#5956E9] bg-[#5956E9]/5 font-medium'
+                              : 'text-gray-600 hover:bg-gray-100'
+                            }
+                          `}
+                        >
+                          {language}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Mobile Profile/Login Section */}
+                <div className="p-4 border-t">
+                  {session ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        <Image
+                          src={session.user?.image || '/default-avatar.png'}
+                          alt="Profile"
+                          width={40}
+                          height={40}
+                          className="w-10 h-10 rounded-full border-2 border-[#5956E9]/50"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm">{session.user?.name}</p>
+                          <p className="text-xs text-gray-500 truncate">{session.user?.email}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => signOut()}
+                        className="w-full px-3 py-2 text-sm text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors text-center"
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        handleLoginClick();
+                        setMobileNavOpen(false);
+                      }}
+                      className="w-full px-3 py-2 text-sm bg-[#5956E9] text-white rounded-lg hover:bg-[#5956E9]/90 transition-colors text-center"
+                    >
+                      Login
+                    </button>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       <div className="pt-24 pb-12 px-4 md:px-8">
         <div className="max-w-[1500px] mx-auto">

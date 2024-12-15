@@ -25,18 +25,17 @@ export default function ListenPage({ params }: { params: { id: string } }) {
   const [volume, setVolume] = useState(0.8);
   const [isLoading, setIsLoading] = useState(true);
   const [isBuffering, setIsBuffering] = useState(false);
+  const [isSeeking, setIsSeeking] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Mock data - replace with real data
+  // Fixed test audio data
   const story = {
     title: "The Silent Echo",
     author: "Sarah Mitchell",
     cover: "https://images.unsplash.com/photo-1544947950-fa07a98d237f",
     chapter: "Chapter 1: The Beginning",
-    // Using a public domain audio sample from archive.org
-    audioUrl: "https://www2.cs.uic.edu/~i101/SoundFiles/CantinaBand60.wav"
+    audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
   };
-
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = volume;
@@ -124,12 +123,56 @@ export default function ListenPage({ params }: { params: { id: string } }) {
       if (isFinite(duration) && duration > 0) {
         const newTime = (value[0] / 100) * duration;
         if (isFinite(newTime)) {
-          audioRef.current.currentTime = newTime;
+          setIsSeeking(true);
           setProgress(value[0]);
+          setCurrentTime(newTime);
+          
+          // If audio is not loaded at this point, we need to load it
+          if (audioRef.current.readyState < 3) {
+            setIsBuffering(true);
+          }
+
+          audioRef.current.currentTime = newTime;
+          
+          // If audio was playing, continue playing after seek
+          if (isPlaying) {
+            audioRef.current.play().catch(console.error);
+          }
         }
       }
     }
   };
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleSeeked = () => {
+      setIsSeeking(false);
+      setIsBuffering(false);
+    };
+
+    const handleSeeking = () => {
+      setIsBuffering(true);
+    };
+
+    const handleCanPlayThrough = () => {
+      setIsBuffering(false);
+      if (isPlaying) {
+        audio.play().catch(console.error);
+      }
+    };
+
+    audio.addEventListener('seeked', handleSeeked);
+    audio.addEventListener('seeking', handleSeeking);
+    audio.addEventListener('canplaythrough', handleCanPlayThrough);
+
+    return () => {
+      audio.removeEventListener('seeked', handleSeeked);
+      audio.removeEventListener('seeking', handleSeeking);
+      audio.removeEventListener('canplaythrough', handleCanPlayThrough);
+    };
+  }, [isPlaying]);
 
   const handleDownload = async () => {
     try {
