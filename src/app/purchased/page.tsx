@@ -1,4 +1,5 @@
 "use client";
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
@@ -35,13 +36,15 @@ const purchasedBooks = [
 ];
 
 export default function PurchasedPage() {
+  const router = useRouter();
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-sm border-b">
         <div className="max-w-[1500px] mx-auto px-4 py-4">
           <div className="flex items-center">
-            <Link 
-              href="/" 
+            <button 
+              onClick={() => router.back()}
               className="flex items-center p-2 -ml-2 text-[#5956E9] hover:text-[#4745BB] transition-colors"
             >
               <svg 
@@ -56,7 +59,7 @@ export default function PurchasedPage() {
                   clipRule="evenodd" 
                 />
               </svg>
-            </Link>
+            </button>
             <h1 className="text-2xl font-bold text-gray-900 ml-2">Purchased Stories</h1>
           </div>
         </div>

@@ -175,6 +175,14 @@ export default function LibraryPage() {
     };
   }, [isMobileNavOpen]);
 
+  // Add this function to handle scroll to top
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  };
+
   // Update URL when category changes
   const handleCategoryChange = (categoryId: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -192,8 +200,8 @@ export default function LibraryPage() {
       <div className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-sm border-b">
         <div className="max-w-[1500px] mx-auto px-4 py-4">
           <div className="flex items-center justify-between gap-4">
-            {/* Logo */}
-            <Link href="/" className="flex items-center gap-2 group">
+            {/* Replace Link with button for logo */}
+            <button onClick={scrollToTop} className="flex items-center gap-2 group">
               <div className="relative w-8 h-8">
                 <svg
                   className="w-8 h-8 text-[#5956E9] transform transition-transform duration-300 group-hover:scale-110"
@@ -235,7 +243,7 @@ export default function LibraryPage() {
                 <h1 className="text-2xl font-bold text-[#5956E9] leading-none">Wordwisp</h1>
                 <span className="text-[10px] text-gray-400 tracking-wider">AUDIO STORIES</span>
               </div>
-            </Link>
+            </button>
 
             {/* Desktop Navigation */}
             <nav className="hidden lg:flex items-center gap-6 flex-1 justify-end">
@@ -334,15 +342,30 @@ export default function LibraryPage() {
                 <div className="relative profile-dropdown">
                   <button
                     onClick={() => setProfileDropdownOpen(!isProfileDropdownOpen)}
-                    className="w-10 h-10 rounded-full overflow-hidden border-2 border-[#5956E9]/50 hover:border-[#5956E9] transition-colors focus:outline-none"
+                    className="w-10 h-10 rounded-full overflow-hidden border-2 border-[#5956E9]/50 hover:border-[#5956E9] transition-colors focus:outline-none flex items-center justify-center bg-gray-100"
                   >
-                    <Image
-                      src={session.user?.image || '/default-avatar.png'}
-                      alt="Profile"
-                      width={40}
-                      height={40}
-                      className="w-full h-full object-cover"
-                    />
+                    {session.user?.image ? (
+                      <Image
+                        src={session.user.image}
+                        alt="Profile"
+                        width={40}
+                        height={40}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <svg 
+                        className="w-5 h-5 text-gray-600"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                      </svg>
+                    )}
                   </button>
 
                   <AnimatePresence>
@@ -408,14 +431,31 @@ export default function LibraryPage() {
             </nav>
 
             {/* Mobile Navigation Button */}
-            <button
-              onClick={() => setMobileNavOpen(true)}
-              className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <svg className="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
+            <div className="lg:hidden flex items-center gap-2">
+              {session && (
+                <Link
+                  href="/purchased"
+                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <svg
+                    className="w-6 h-6 text-gray-600"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M2.25 2.25a.75.75 0 000 1.5h1.386c.17 0 .318.114.362.278l2.558 9.592a3.752 3.752 0 00-2.806 3.63c0 .414.336.75.75.75h15.75a.75.75 0 000-1.5H5.378A2.25 2.25 0 017.5 15h11.218a.75.75 0 00.674-.421 60.358 60.358 0 002.96-7.228.75.75 0 00-.525-.965A60.864 60.864 0 005.68 4.509l-.232-.867A1.875 1.875 0 003.636 2.25H2.25zM3.75 20.25a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0zM16.5 20.25a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0z" />
+                  </svg>
+                </Link>
+              )}
+              <button
+                onClick={() => setMobileNavOpen(true)}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <svg className="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -510,13 +550,30 @@ export default function LibraryPage() {
                   {session ? (
                     <div className="space-y-4">
                       <div className="flex items-center gap-3">
-                        <Image
-                          src={session.user?.image || '/default-avatar.png'}
-                          alt="Profile"
-                          width={40}
-                          height={40}
-                          className="w-10 h-10 rounded-full border-2 border-[#5956E9]/50"
-                        />
+                        {session.user?.image ? (
+                          <Image
+                            src={session.user.image}
+                            alt="Profile"
+                            width={40}
+                            height={40}
+                            className="w-10 h-10 rounded-full border-2 border-[#5956E9]/50"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full border-2 border-[#5956E9]/50 bg-gray-100 flex items-center justify-center">
+                            <svg 
+                              className="w-5 h-5 text-gray-600"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                              <circle cx="12" cy="7" r="4" />
+                            </svg>
+                          </div>
+                        )}
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-sm">{session.user?.name}</p>
                           <p className="text-xs text-gray-500 truncate">{session.user?.email}</p>

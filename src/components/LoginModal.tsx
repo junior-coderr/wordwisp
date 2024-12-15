@@ -1,7 +1,30 @@
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { motion, AnimatePresence } from 'framer-motion';
-import { signIn, signOut, useSession } from "next-auth/react"; // Add this import
+import { signIn, signOut, useSession } from "next-auth/react";
+import { AlertCircle } from 'lucide-react';
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+
+// Validation schemas
+const loginSchema = z.object({
+  email: z.string().email("Please enter a valid email"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+const registerSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Please enter a valid email"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  confirmPassword: z.string()
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
+type RegisterFormValues = z.infer<typeof registerSchema>;
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -13,6 +36,26 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
   const [isManualLogin, setIsManualLogin] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const loginForm = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+    },
+  });
+
+  const registerForm = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      name: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+    },
+  });
 
   const handleGoogleSignIn = async () => {
     try {
@@ -25,10 +68,89 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
     }
   };
 
+  const handleRegister = async (data: RegisterFormValues) => {
+    setError('');
+    setIsLoading(true);
+
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          name: data.name, 
+          email: data.email, 
+          password: data.password 
+        }),
+      });
+
+      const responseData = await res.json();
+
+      if (!res.ok) {
+        setError(responseData.error || 'Registration failed');
+        return;
+      }
+
+      const loginResult = await signIn('credentials', {
+        redirect: false,
+        email: data.email,
+        password: data.password,
+      });
+
+      if (loginResult?.error) {
+        setError(loginResult.error);
+      } else if (loginResult?.ok) {
+        onClose();
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      setError('Registration failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleLogin = async (data: LoginFormValues) => {
+    setError('');
+    setIsLoading(true);
+
+    try {
+      const result = await signIn('credentials', {
+        redirect: false,
+        email: data.email,
+        password: data.password,
+      });
+
+      if (result?.error) {
+        setError(result.error);
+      } else if (result?.ok) {
+        onClose();
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      setError('Login failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const resetStates = () => {
     setIsManualLogin(false);
     setIsSignUp(false);
   };
+
+  const ErrorMessage = ({ message }: { message: string }) => (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      className="bg-red-50 border-l-4 border-red-400 p-4 rounded-md mb-4"
+    >
+      <div className="flex items-center">
+        <AlertCircle className="h-5 w-5 text-red-400 mr-2" />
+        <p className="text-sm text-red-700">{message}</p>
+      </div>
+    </motion.div>
+  );
 
   if (session) {
     return (
@@ -173,8 +295,15 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.2 }}
                   className="space-y-4"
-                  onSubmit={(e) => e.preventDefault()}
+                  onSubmit={isSignUp ? 
+                    registerForm.handleSubmit(handleRegister) : 
+                    loginForm.handleSubmit(handleLogin)
+                  }
                 >
+                  <AnimatePresence>
+                    {error && <ErrorMessage message={error} />}
+                  </AnimatePresence>
+                  
                   {isSignUp && (
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
@@ -185,10 +314,15 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                         Full Name
                       </label>
                       <input
+                        {...registerForm.register('name')}
                         type="text"
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5956E9]"
                         placeholder="Enter your full name"
+                        required
                       />
+                      {registerForm.formState.errors.name && (
+                        <p className="mt-1 text-sm text-red-500">{registerForm.formState.errors.name.message}</p>
+                      )}
                     </motion.div>
                   )}
 
@@ -201,10 +335,19 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                       Email
                     </label>
                     <input
+                      {...(isSignUp ? registerForm.register('email') : loginForm.register('email'))}
                       type="email"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5956E9]"
                       placeholder="Enter your email"
                     />
+                    {isSignUp ? 
+                      registerForm.formState.errors.email && (
+                        <p className="mt-1 text-sm text-red-500">{registerForm.formState.errors.email.message}</p>
+                      ) :
+                      loginForm.formState.errors.email && (
+                        <p className="mt-1 text-sm text-red-500">{loginForm.formState.errors.email.message}</p>
+                      )
+                    }
                   </motion.div>
                   
                   <motion.div
@@ -216,10 +359,19 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                       Password
                     </label>
                     <input
+                      {...(isSignUp ? registerForm.register('password') : loginForm.register('password'))}
                       type="password"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5956E9]"
                       placeholder="Enter your password"
                     />
+                    {isSignUp ? 
+                      registerForm.formState.errors.password && (
+                        <p className="mt-1 text-sm text-red-500">{registerForm.formState.errors.password.message}</p>
+                      ) :
+                      loginForm.formState.errors.password && (
+                        <p className="mt-1 text-sm text-red-500">{loginForm.formState.errors.password.message}</p>
+                      )
+                    }
                   </motion.div>
 
                   {isSignUp && (
@@ -232,10 +384,15 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                         Confirm Password
                       </label>
                       <input
+                        {...registerForm.register('confirmPassword')}
                         type="password"
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5956E9]"
                         placeholder="Confirm your password"
+                        required
                       />
+                      {registerForm.formState.errors.confirmPassword && (
+                        <p className="mt-1 text-sm text-red-500">{registerForm.formState.errors.confirmPassword.message}</p>
+                      )}
                     </motion.div>
                   )}
 
@@ -244,8 +401,19 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: isSignUp ? 0.5 : 0.3 }}
                   >
-                    <Button className="w-full bg-[#5956E9] hover:bg-[#4644c7]">
-                      {isSignUp ? "Create Account" : "Login"}
+                    <Button 
+                      className="w-full bg-[#5956E9] hover:bg-[#4644c7]"
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                          className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
+                        />
+                      ) : (
+                        isSignUp ? "Create Account" : "Login"
+                      )}
                     </Button>
                     <Button
                       variant="ghost"

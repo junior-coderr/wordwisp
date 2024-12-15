@@ -3,6 +3,7 @@ import connect from "@/app/api/db/connect"
 import User from "@/app/api/model/user";
 import { JWT } from "next-auth/jwt";
 import { NextAuthOptions, User as NextAuthUser, Account, Profile, Session } from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
 
 interface Token extends JWT {
   accessToken: string;
@@ -12,7 +13,7 @@ interface Token extends JWT {
   id?:number;
   email?: string;
   name?: string;
-  image?: string;
+  image?: string | null;
 }
 
 interface UserInfo extends Token {
@@ -70,6 +71,40 @@ const options: NextAuthOptions = {
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
+    CredentialsProvider({
+      name: "Credentials",
+      credentials: {
+        email: { label: "Email", type: "text" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) {
+          throw new Error("Email and password required");
+        }
+
+        try {
+          await connect();
+          const user = await User.findOne({ email: credentials.email });
+
+          if (!user) {
+            throw new Error("No account found with this email");
+          }
+
+          if (user.password !== credentials.password) {
+            throw new Error("Invalid password");
+          }
+
+          return {
+            id: user._id.toString(),
+            email: user.email,
+            name: user.name,
+            image: user.image,
+          };
+        } catch (error: any) {
+          throw new Error(error.message || "Authentication failed");
+        }
+      },
+    }),
   ],
   callbacks: {
     async signIn(user: NextAuthUser, account: Account, profile: Profile) {
@@ -84,7 +119,7 @@ const options: NextAuthOptions = {
           console.log("User name:", user.user.name);
           const newUser = new User({
             name: user.user.name,
-            image: user.user.image,
+            image: user.user.image || null, // Changed default to null
             email: user.user.email,
           });
           await newUser.save();
