@@ -11,7 +11,10 @@ body {
     text-wrap: balance;
   }
 }
-
+.\[\&_svg\]\:size-4 svg {
+  width: 1.5rem !important;
+  height: 1.5rem !important;
+}
 @layer base {
   :root {
     --background: 0 0% 100%;

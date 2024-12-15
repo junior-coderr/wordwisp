@@ -15,6 +15,7 @@ import {
   Download, // Add this import
   Loader2 // Add this import
 } from 'lucide-react';
+import { toast } from "sonner"; // Add this import if you're using sonner for notifications
 
 export default function ListenPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -26,6 +27,7 @@ export default function ListenPage({ params }: { params: { id: string } }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isBuffering, setIsBuffering] = useState(false);
   const [isSeeking, setIsSeeking] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Fixed test audio data
@@ -35,6 +37,7 @@ export default function ListenPage({ params }: { params: { id: string } }) {
     cover: "https://images.unsplash.com/photo-1544947950-fa07a98d237f",
     chapter: "Chapter 1: The Beginning",
     audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+    // audioUrl: "https://webnew.blob.core.windows.net/preuploadedaudio/audio2.mp3"
   };
   useEffect(() => {
     if (audioRef.current) {
@@ -176,18 +179,31 @@ export default function ListenPage({ params }: { params: { id: string } }) {
 
   const handleDownload = async () => {
     try {
-      const response = await fetch(story.audioUrl);
+      setIsDownloading(true);
+
+      const encodedUrl = encodeURIComponent(story.audioUrl);
+      const response = await fetch(`/api/download?url=${encodedUrl}`);
+      
+      if (!response.ok) {
+        throw new Error('Download failed');
+      }
+
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${story.title}.mp3`; // or whatever extension your audio has
+      a.download = `${story.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.mp3`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+      
+      toast.success('Download completed!');
     } catch (error) {
       console.error('Download failed:', error);
+      toast.error('Failed to download audio');
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -373,8 +389,13 @@ export default function ListenPage({ params }: { params: { id: string } }) {
                   size="icon"
                   className="text-white/90 hover:text-white hover:bg-white/20 transition-all duration-300 hover:scale-110 group"
                   onClick={handleDownload}
+                  disabled={isDownloading}
                 >
-                  <Download className="w-6 h-6 group-hover:translate-y-1 transition-transform" />
+                  {isDownloading ? (
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  ) : (
+                    <Download className="w-6 h-6 group-hover:translate-y-1 transition-transform" />
+                  )}
                 </Button>
               </div>
             </motion.div>
