@@ -154,15 +154,26 @@ export default function Home() {
               <div className="hidden md:flex items-center gap-4 relative profile-dropdown">
                 <button
                   onClick={() => setProfileDropdownOpen(!isProfileDropdownOpen)}
-                  className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/50 hover:border-white transition-colors focus:outline-none"
+                  className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/50 hover:border-white transition-colors focus:outline-none flex items-center justify-center bg-white/10"
                 >
-                  <Image
-                    src={session.user?.image || '/default-avatar.png'}
-                    alt="Profile"
-                    width={40}
-                    height={40}
-                    className="w-full h-full object-cover"
-                  />
+                  {session.user?.image ? (
+                    <Image
+                      src={session.user.image}
+                      alt="Profile"
+                      width={40}
+                      height={40}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <svg
+                      className="w-6 h-6 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
+                      <path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clipRule="evenodd" />
+                    </svg>
+                  )}
                 </button>
 
                 <AnimatePresence>
@@ -363,14 +374,25 @@ export default function Home() {
             <nav className="flex flex-col gap-4">
               {session && (
                 <div className="flex items-center gap-3 pb-4 border-b border-white/10">
-                  <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white/50">
-                    <Image
-                      src={session.user?.image || '/default-avatar.png'}
-                      alt="Profile"
-                      width={48}
-                      height={48}
-                      className="w-full h-full object-cover"
-                    />
+                  <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white/50 flex items-center justify-center bg-white/10">
+                    {session.user?.image ? (
+                      <Image
+                        src={session.user.image}
+                        alt="Profile"
+                        width={48}
+                        height={48}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <svg
+                        className="w-7 h-7 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clipRule="evenodd" />
+                      </svg>
+                    )}
                   </div>
                   <div>
                     <p className="text-white font-semibold">{session.user?.name}</p>

@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { motion, AnimatePresence } from 'framer-motion';
 import { signIn, signOut, useSession } from "next-auth/react";
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Mail } from 'lucide-react';
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -14,9 +14,15 @@ const loginSchema = z.object({
 });
 
 const registerSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Please enter a valid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  name: z.string()
+    .min(2, "Name must be at least 2 characters")
+    .regex(/^[a-zA-Z\s]*$/, "Name can only contain letters and spaces"),
+  email: z.string()
+    .email("Please enter a valid email")
+    .min(1, "Email is required"),
+  password: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "Password must contain at least one uppercase letter, one lowercase letter, and one number"),
   confirmPassword: z.string()
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
@@ -86,7 +92,15 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
       const responseData = await res.json();
 
       if (!res.ok) {
-        setError(responseData.error || 'Registration failed');
+        // Handle specific error cases
+        if (responseData.code === 'EMAIL_EXISTS') {
+          registerForm.setError('email', {
+            type: 'manual',
+            message: 'This email is already registered'
+          });
+        } else {
+          setError(responseData.error || 'Registration failed');
+        }
         return;
       }
 
@@ -150,6 +164,18 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
         <p className="text-sm text-red-700">{message}</p>
       </div>
     </motion.div>
+  );
+
+  const FormError = ({ message }: { message: string }) => (
+    <motion.p
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      className="mt-1 text-sm text-red-500 flex items-center gap-1"
+    >
+      <AlertCircle className="h-3 w-3" />
+      <span>{message}</span>
+    </motion.p>
   );
 
   if (session) {
@@ -236,7 +262,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
                   transition={{ duration: 0.2 }}
-                  className="space-y-4"
+                  className="space-y-3" // Changed from space-y-4 to space-y-3
                 >
                   <Button 
                     variant="outline" 
@@ -275,16 +301,17 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                     </span>
                   </Button>
 
-                  <div className="text-center">
+                  <div className="text-center text-sm"> {/* Added text-sm to reduce height */}
                     <span className="text-gray-500">or</span>
                   </div>
 
                   <Button 
                     variant="outline"
-                    className="w-full h-12"
+                    className="w-full flex items-center justify-center gap-2 h-12"
                     onClick={() => setIsManualLogin(true)}
                   >
-                    Continue with Email
+                    <Mail className="w-5 h-5 text-gray-600" />
+                    <span className="text-gray-700">Continue with Email</span>
                   </Button>
                 </motion.div>
               ) : (
@@ -304,95 +331,134 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                     {error && <ErrorMessage message={error} />}
                   </AnimatePresence>
                   
-                  {isSignUp && (
+                  {isSignUp ? (
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.1 }}
+                      className="space-y-4"
                     >
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Full Name
-                      </label>
-                      <input
-                        {...registerForm.register('name')}
-                        type="text"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5956E9]"
-                        placeholder="Enter your full name"
-                        required
-                      />
-                      {registerForm.formState.errors.name && (
-                        <p className="mt-1 text-sm text-red-500">{registerForm.formState.errors.name.message}</p>
-                      )}
+                      <div className="space-y-1">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Full Name
+                        </label>
+                        <input
+                          {...registerForm.register('name')}
+                          type="text"
+                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5956E9] ${
+                            registerForm.formState.errors.name ? 'border-red-500' : 'border-gray-300'
+                          }`}
+                          placeholder="Enter your full name"
+                        />
+                        <AnimatePresence>
+                          {registerForm.formState.errors.name && (
+                            <FormError message={registerForm.formState.errors.name.message!} />
+                          )}
+                        </AnimatePresence>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Email
+                        </label>
+                        <input
+                          {...registerForm.register('email')}
+                          type="email"
+                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5956E9] ${
+                            registerForm.formState.errors.email ? 'border-red-500' : 'border-gray-300'
+                          }`}
+                          placeholder="Enter your email"
+                        />
+                        <AnimatePresence>
+                          {registerForm.formState.errors.email && (
+                            <FormError message={registerForm.formState.errors.email.message!} />
+                          )}
+                        </AnimatePresence>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Password
+                        </label>
+                        <input
+                          {...registerForm.register('password')}
+                          type="password"
+                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5956E9] ${
+                            registerForm.formState.errors.password ? 'border-red-500' : 'border-gray-300'
+                          }`}
+                          placeholder="Enter your password"
+                        />
+                        <AnimatePresence>
+                          {registerForm.formState.errors.password && (
+                            <FormError message={registerForm.formState.errors.password.message!} />
+                          )}
+                        </AnimatePresence>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Confirm Password
+                        </label>
+                        <input
+                          {...registerForm.register('confirmPassword')}
+                          type="password"
+                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5956E9] ${
+                            registerForm.formState.errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
+                          }`}
+                          placeholder="Confirm your password"
+                        />
+                        <AnimatePresence>
+                          {registerForm.formState.errors.confirmPassword && (
+                            <FormError message={registerForm.formState.errors.confirmPassword.message!} />
+                          )}
+                        </AnimatePresence>
+                      </div>
                     </motion.div>
-                  )}
-
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                  >
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email
-                    </label>
-                    <input
-                      {...(isSignUp ? registerForm.register('email') : loginForm.register('email'))}
-                      type="email"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5956E9]"
-                      placeholder="Enter your email"
-                    />
-                    {isSignUp ? 
-                      registerForm.formState.errors.email && (
-                        <p className="mt-1 text-sm text-red-500">{registerForm.formState.errors.email.message}</p>
-                      ) :
-                      loginForm.formState.errors.email && (
-                        <p className="mt-1 text-sm text-red-500">{loginForm.formState.errors.email.message}</p>
-                      )
-                    }
-                  </motion.div>
-                  
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: isSignUp ? 0.3 : 0.2 }}
-                  >
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Password
-                    </label>
-                    <input
-                      {...(isSignUp ? registerForm.register('password') : loginForm.register('password'))}
-                      type="password"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5956E9]"
-                      placeholder="Enter your password"
-                    />
-                    {isSignUp ? 
-                      registerForm.formState.errors.password && (
-                        <p className="mt-1 text-sm text-red-500">{registerForm.formState.errors.password.message}</p>
-                      ) :
-                      loginForm.formState.errors.password && (
-                        <p className="mt-1 text-sm text-red-500">{loginForm.formState.errors.password.message}</p>
-                      )
-                    }
-                  </motion.div>
-
-                  {isSignUp && (
+                  ) : (
+                    // Login form fields
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.4 }}
+                      transition={{ delay: 0.1 }}
+                      className="space-y-4"
                     >
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Confirm Password
-                      </label>
-                      <input
-                        {...registerForm.register('confirmPassword')}
-                        type="password"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5956E9]"
-                        placeholder="Confirm your password"
-                        required
-                      />
-                      {registerForm.formState.errors.confirmPassword && (
-                        <p className="mt-1 text-sm text-red-500">{registerForm.formState.errors.confirmPassword.message}</p>
-                      )}
+                      <div className="space-y-1">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Email
+                        </label>
+                        <input
+                          {...loginForm.register('email')}
+                          type="email"
+                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5956E9] ${
+                            loginForm.formState.errors.email ? 'border-red-500' : 'border-gray-300'
+                          }`}
+                          placeholder="Enter your email"
+                        />
+                        <AnimatePresence>
+                          {loginForm.formState.errors.email && (
+                            <FormError message={loginForm.formState.errors.email.message!} />
+                          )}
+                        </AnimatePresence>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Password
+                        </label>
+                        <input
+                          {...loginForm.register('password')}
+                          type="password"
+                          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5956E9] ${
+                            loginForm.formState.errors.password ? 'border-red-500' : 'border-gray-300'
+                          }`}
+                          placeholder="Enter your password"
+                        />
+                        <AnimatePresence>
+                          {loginForm.formState.errors.password && (
+                            <FormError message={loginForm.formState.errors.password.message!} />
+                          )}
+                        </AnimatePresence>
+                      </div>
                     </motion.div>
                   )}
 

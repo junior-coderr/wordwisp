@@ -5,6 +5,7 @@ const nextConfig = {
       "images.unsplash.com",
       "lh3.googleusercontent.com",
       "api.dicebear.com",
+      "storycover.blob.core.windows.net",
     ],
   },
 };
