@@ -7,6 +7,33 @@ import { Plus, Trash2, Loader2, Upload, BookOpen, ImageIcon } from 'lucide-react
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { toast } from "sonner";
+
+const GENRE_OPTIONS = [
+  "Fiction",
+  "Non-Fiction",
+  "Mystery",
+  "Romance",
+  "Science Fiction",
+  "Fantasy",
+  "Horror",
+  "Thriller",
+  "Biography",
+  "History",
+  "Children's",
+  "Young Adult",
+  "Poetry",
+  "Self-Help",
+  "Business"
+];
 
 interface Chapter {
   title: string;
@@ -18,11 +45,25 @@ interface Chapter {
 
 export default function StoriesPage() {
   const [storyTitle, setStoryTitle] = useState('');
+  const [price, setPrice] = useState('');
+  const [description, setDescription] = useState('');
+  const [genre, setGenre] = useState('');
   const [cover, setCover] = useState<File | null>(null);
   const [coverPreviewUrl, setCoverPreviewUrl] = useState<string>('');
   const [previewAudio, setPreviewAudio] = useState<File | null>(null);
   const [previewAudioUrl, setPreviewAudioUrl] = useState<string>('');
   const [chapters, setChapters] = useState<Chapter[]>([{ title: '', audio: null }]);
+  const [isFormValid, setIsFormValid] = useState(false);
+  const [errors, setErrors] = useState<{
+    title?: boolean;
+    description?: boolean;
+    price?: boolean;
+    genre?: boolean;
+    cover?: boolean;
+    previewAudio?: boolean;
+    chapters?: boolean;
+  }>({});
+  const [showErrors, setShowErrors] = useState(false);
 
   const handlePreviewAudioChange = (file: File | null) => {
     if (file) {
@@ -81,10 +122,47 @@ export default function StoriesPage() {
     setChapters(newChapters);
   };
 
+  const validateForm = () => {
+    const newErrors = {
+      title: storyTitle.trim() === '',
+      description: description.trim().length < 50,
+      price: parseFloat(price) <= 0,
+      genre: genre === '',
+      cover: cover === null,
+      previewAudio: previewAudio === null,
+      chapters: !chapters.every(chapter => 
+        chapter.title.trim() !== '' && 
+        chapter.audio !== null && 
+        !chapter.isUploading
+      )
+    };
+
+    setErrors(newErrors);
+    
+    if (Object.values(newErrors).some(error => error)) {
+      toast.error("Please fill in all required fields correctly");
+      return false;
+    }
+
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setShowErrors(true);
+    
+    if (!validateForm()) {
+      // Scroll to the first error
+      const firstErrorField = document.querySelector('.error-field');
+      firstErrorField?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
     const formData = new FormData();
     formData.append('storyTitle', storyTitle);
+    formData.append('price', price);
+    formData.append('description', description);
+    formData.append('genre', genre);
     if (cover) formData.append('cover', cover);
     if (previewAudio) formData.append('previewAudio', previewAudio);
     
@@ -119,8 +197,61 @@ export default function StoriesPage() {
                   onChange={(e) => setStoryTitle(e.target.value)}
                   required
                   placeholder="Enter story title"
-                  className="w-full"
+                  className={`w-full ${showErrors && errors.title ? 'border-red-500 focus:ring-red-500' : ''}`}
                 />
+                {showErrors && errors.title && (
+                  <span className="text-sm text-red-500">Title is required</span>
+                )}
+
+                <Label htmlFor="description">Description</Label>
+                <textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  required
+                  placeholder="Enter story description (minimum 50 characters)"
+                  className={`w-full min-h-[150px] p-2 rounded-md border 
+                    ${showErrors && errors.description ? 'border-red-500 focus:ring-red-500' : ''}`}
+                />
+                <div className={`text-sm ${description.length < 50 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                  {description.length}/50 characters minimum
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="price">Price ($)</Label>
+                    <Input
+                      id="price"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value)}
+                      required
+                      placeholder="Enter price"
+                      className={`w-full ${showErrors && errors.price ? 'border-red-500 focus:ring-red-500' : ''}`}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="genre">Genre</Label>
+                    <Select
+                      value={genre}
+                      onValueChange={setGenre}
+                      required
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select genre" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {GENRE_OPTIONS.map((genre) => (
+                          <SelectItem key={genre} value={genre}>
+                            {genre}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
                 
                 <Label htmlFor="cover" className="mt-4 block">Book Cover</Label>
                 <div className="flex items-center gap-4">
@@ -130,7 +261,7 @@ export default function StoriesPage() {
                     accept="image/*"
                     onChange={(e) => handleCoverChange(e.target.files?.[0] || null)}
                     required
-                    className="w-full"
+                    className={`w-full ${showErrors && errors.cover ? 'border-red-500 focus:ring-red-500' : ''}`}
                   />
                   {cover && <Upload className="w-5 h-5 text-green-500" />}
                 </div>
@@ -174,6 +305,7 @@ export default function StoriesPage() {
                 accept="audio/*"
                 onChange={(e) => handlePreviewAudioChange(e.target.files?.[0] || null)}
                 required
+                className={`w-full ${showErrors && errors.previewAudio ? 'border-red-500 focus:ring-red-500' : ''}`}
               />
             </div>
             {previewAudioUrl && (
@@ -230,6 +362,7 @@ export default function StoriesPage() {
                         }}
                         required
                         placeholder="Enter chapter title"
+                        className={`w-full ${showErrors && errors.chapters ? 'border-red-500 focus:ring-red-500' : ''}`}
                       />
                     </div>
 
@@ -242,6 +375,7 @@ export default function StoriesPage() {
                         onChange={(e) => handleChapterAudioChange(index, e.target.files?.[0] || null)}
                         required
                         disabled={chapter.isUploading}
+                        className={`w-full ${showErrors && errors.chapters ? 'border-red-500 focus:ring-red-500' : ''}`}
                       />
                       {chapter.isUploading && (
                         <div className="mt-2 space-y-2">
@@ -270,11 +404,32 @@ export default function StoriesPage() {
           </CardContent>
         </Card>
 
-        <div className="flex justify-end">
-          <Button type="submit" size="lg">
+        <div className="flex justify-end gap-2">
+          <Button 
+            type="submit" 
+            size="lg"
+          >
             Upload Story
           </Button>
         </div>
+
+        {/* Error summary alert */}
+        {showErrors && Object.values(errors).some(error => error) && (
+          <Alert variant="destructive" className="mt-4">
+            <AlertDescription>
+              Please correct the following errors:
+              <ul className="list-disc pl-4 mt-2">
+                {errors.title && <li>Enter a story title</li>}
+                {errors.description && <li>Description must be at least 50 characters</li>}
+                {errors.price && <li>Enter a valid price</li>}
+                {errors.genre && <li>Select a genre</li>}
+                {errors.cover && <li>Upload a cover image</li>}
+                {errors.previewAudio && <li>Upload a preview audio</li>}
+                {errors.chapters && <li>Complete all chapter details</li>}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        )}
       </form>
     </div>
   );

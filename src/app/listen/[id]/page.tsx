@@ -1,4 +1,6 @@
 "use client";
+
+// Import necessary dependencies
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { Button } from "@/components/ui/button";
@@ -20,76 +22,84 @@ import {
 import { toast } from "sonner"; // Add this import if you're using sonner for notifications
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"; // Add this import
 
+// Sample data structure for chapters
+const chapters = [
+  { 
+    title: "Chapter 1: The Beginning", 
+    duration: "15:30", 
+    active: true,
+    audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+  },
+  { 
+    title: "Chapter 2: The Discovery", 
+    duration: "12:45", 
+    active: false,
+    audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"
+  },
+  { 
+    title: "Chapter 3: The Journey", 
+    duration: "18:20", 
+    active: false,
+    audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"
+  },
+  { 
+    title: "Chapter 4: The Challenge", 
+    duration: "14:15", 
+    active: false,
+    audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"
+  },
+  { 
+    title: "Chapter 5: The Resolution", 
+    duration: "16:40", 
+    active: false,
+    audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3"
+  },
+];
+
+// Story metadata configuration
+const story = {
+  title: "The Silent Echo",
+  author: "Sarah Mitchell",
+  cover: "https://storycover.blob.core.windows.net/covers/Beyond%20the%20Shadows%20Book%20Cover.webp",
+  chapter: "Chapter 1: The Beginning",
+  audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+};
+
 export default function ListenPage({ params }: { params: { id: string } }) {
   const router = useRouter();
 
-  // Update chapters data to include audioUrl
-  const chapters = [
-    { 
-      title: "Chapter 1: The Beginning", 
-      duration: "15:30", 
-      active: true,
-      audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
-    },
-    { 
-      title: "Chapter 2: The Discovery", 
-      duration: "12:45", 
-      active: false,
-      audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"
-    },
-    { 
-      title: "Chapter 3: The Journey", 
-      duration: "18:20", 
-      active: false,
-      audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3"
-    },
-    { 
-      title: "Chapter 4: The Challenge", 
-      duration: "14:15", 
-      active: false,
-      audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3"
-    },
-    { 
-      title: "Chapter 5: The Resolution", 
-      duration: "16:40", 
-      active: false,
-      audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3"
-    },
-  ];
-
-  // Story data
-  const story = {
-    title: "The Silent Echo",
-    author: "Sarah Mitchell",
-    cover: "https://storycover.blob.core.windows.net/covers/Beyond%20the%20Shadows%20Book%20Cover.webp",
-    chapter: "Chapter 1: The Beginning",
-    audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
-  };
-
-  // States
+  // Player state management
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [volume, setVolume] = useState(0.8);
+
+  // Loading and interaction states
   const [isLoading, setIsLoading] = useState(true);
   const [isBuffering, setIsBuffering] = useState(false);
   const [isSeeking, setIsSeeking] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [currentChapterIndex, setCurrentChapterIndex] = useState(0); // Add this state
-  const [isChaptersOpen, setIsChaptersOpen] = useState(false); // Add this state
-  const [currentChapterText, setCurrentChapterText] = useState(chapters[0].title);
-  const [currentAudioUrl, setCurrentAudioUrl] = useState(chapters[0].audioUrl);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isAudioLoading, setIsAudioLoading] = useState(false);
 
+  // Chapter management states
+  const [currentChapterIndex, setCurrentChapterIndex] = useState(0);
+  const [isChaptersOpen, setIsChaptersOpen] = useState(false);
+  const [currentChapterText, setCurrentChapterText] = useState(chapters[0].title);
+  const [currentAudioUrl, setCurrentAudioUrl] = useState(chapters[0].audioUrl);
+
+  // Audio element reference
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Volume control effect
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = volume;
     }
   }, [volume]);
 
+  // Audio loading and duration setup effect
   useEffect(() => {
     // Reset loading state when audio source changes
     setIsLoading(true);
@@ -116,6 +126,7 @@ export default function ListenPage({ params }: { params: { id: string } }) {
     };
   }, [currentAudioUrl]);
 
+  // Buffering state management effect
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -135,6 +146,7 @@ export default function ListenPage({ params }: { params: { id: string } }) {
     };
   }, []);
 
+  // Player control functions
   const togglePlayPause = () => {
     if (audioRef.current) {
       if (isPlaying) {
@@ -146,12 +158,14 @@ export default function ListenPage({ params }: { params: { id: string } }) {
     }
   };
 
+  // Time formatting helper
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  // Progress tracking functions
   const handleTimeUpdate = () => {
     if (audioRef.current) {
       const currentTime = audioRef.current.currentTime;
@@ -165,6 +179,7 @@ export default function ListenPage({ params }: { params: { id: string } }) {
     }
   };
 
+  // Seeking functionality
   const handleSliderChange = (value: number[]) => {
     if (audioRef.current) {
       const duration = audioRef.current.duration;
@@ -191,6 +206,7 @@ export default function ListenPage({ params }: { params: { id: string } }) {
     }
   };
 
+  // Seeking state management effect
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -222,6 +238,7 @@ export default function ListenPage({ params }: { params: { id: string } }) {
     };
   }, [isPlaying]);
 
+  // Download functionality
   const handleDownload = async () => {
     try {
       setIsDownloading(true);
@@ -252,7 +269,7 @@ export default function ListenPage({ params }: { params: { id: string } }) {
     }
   };
 
-  // Add chapter selection handler
+  // Chapter selection handler
   const handleChapterSelect = async (index: number) => {
     const wasPlaying = isPlaying;
     setCurrentChapterIndex(index);
@@ -272,7 +289,7 @@ export default function ListenPage({ params }: { params: { id: string } }) {
     setIsChaptersOpen(false);
   };
 
-  // Add function to handle next chapter
+  // Auto-play next chapter functionality
   const playNextChapter = () => {
     const nextChapterIndex = currentChapterIndex + 1;
     if (nextChapterIndex < chapters.length) {
@@ -284,7 +301,7 @@ export default function ListenPage({ params }: { params: { id: string } }) {
     }
   };
 
-  // Add ended event listener to audio
+  // Chapter end detection effect
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -298,8 +315,9 @@ export default function ListenPage({ params }: { params: { id: string } }) {
     return () => {
       audio.removeEventListener('ended', handleEnded);
     };
-  }, [currentChapterIndex]); // Add currentChapterIndex as dependency
+  }, [currentChapterIndex]);
 
+  // Initial audio loading effect
   useEffect(() => {
     const audio = new Audio(chapters[0].audioUrl);
     audio.addEventListener('loadeddata', () => {
@@ -317,7 +335,7 @@ export default function ListenPage({ params }: { params: { id: string } }) {
     return () => audio.remove();
   }, []);
 
-  // Update audio loading effect
+  // Audio loading state management
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -351,15 +369,17 @@ export default function ListenPage({ params }: { params: { id: string } }) {
   }, [isPlaying]);
 
   return (
+    // Main layout container with gradient background
     <div className="min-h-screen bg-gradient-to-br from-[#5956E9] via-[#4745BD] to-[#393790] p-4 md:p-8 relative">
-      {/* Background blur effect using cover image */}
+      {/* Background blur effect */}
       <div 
         className="absolute inset-0 bg-cover bg-center opacity-10 blur-3xl"
         style={{ backgroundImage: `url(${story.cover})` }}
       />
 
+      {/* Main content container */}
       <div className="relative z-10">
-        {/* Updated Back Button with smoother hover */}
+        {/* Navigation and controls */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -391,6 +411,7 @@ export default function ListenPage({ params }: { params: { id: string } }) {
           }}
         />
 
+        {/* Loading state UI */}
         {isInitialLoading ? (
           <div className="max-w-4xl mx-auto">
             <motion.div 
@@ -411,6 +432,7 @@ export default function ListenPage({ params }: { params: { id: string } }) {
             </motion.div>
           </div>
         ) : (
+          // Main player UI
           <div className="max-w-4xl mx-auto">
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
@@ -462,7 +484,7 @@ export default function ListenPage({ params }: { params: { id: string } }) {
                 <Button
                   variant="ghost"
                   className="w-full mb-6 text-white/90 hover:text-white hover:bg-white/10 transition-all duration-300
-                          border border-white/20 backdrop-blur-sm rounded-xl p-4 flex items-center justify-between group"
+                          border border-white/20 backdrop-blur-sm rounded-xl py-5 px-6 flex items-center justify-between group"
                 >
                   <div className="flex items-center gap-3">
                     <List className="w-5 h-5" />
@@ -471,7 +493,7 @@ export default function ListenPage({ params }: { params: { id: string } }) {
                   <ChevronDown className={`w-5 h-5 transition-transform duration-200 ${isChaptersOpen ? 'rotate-180' : ''}`} />
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px] md:max-w-[600px] w-[95vw] bg-gradient-to-br from-[#5956E9]/95 via-[#4745BD]/95 to-[#393790]/95 border-white/20 text-white backdrop-blur-lg p-0">
+              <DialogContent className="sm:max-w-[425px] md:max-w-[600px] mx-auto w-[calc(100vw-2rem)] bg-gradient-to-br from-[#5956E9]/95 via-[#4745BD]/95 to-[#393790]/95 border-white/20 text-white backdrop-blur-lg p-0">
                 <div className="max-h-[70vh] overflow-y-auto scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent p-6">
                   <h2 className="text-xl font-semibold mb-4 sticky top-0 bg-gradient-to-br from-[#5956E9] to-[#4745BD] p-2 rounded-lg">
                     Select Chapter
