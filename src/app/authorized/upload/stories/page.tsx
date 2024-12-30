@@ -16,10 +16,13 @@ import {
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
+import { getAudioDuration } from '@/lib/audio-utils';
+import { Switch } from "@/components/ui/switch";
 
 const GENRE_OPTIONS = [
   "Fiction",
   "Non-Fiction",
+  "Experience",
   "Mystery",
   "Romance",
   "Science Fiction",
@@ -41,13 +44,14 @@ interface Chapter {
   audioUrl?: string;
   uploadProgress?: number;
   isUploading?: boolean;
+  duration?: number;
 }
 
 export default function StoriesPage() {
   const [storyTitle, setStoryTitle] = useState('');
-  const [price, setPrice] = useState('');
   const [description, setDescription] = useState('');
   const [genre, setGenre] = useState('');
+  const [isPremium, setIsPremium] = useState(false);
   const [cover, setCover] = useState<File | null>(null);
   const [coverPreviewUrl, setCoverPreviewUrl] = useState<string>('');
   const [previewAudio, setPreviewAudio] = useState<File | null>(null);
@@ -57,13 +61,13 @@ export default function StoriesPage() {
   const [errors, setErrors] = useState<{
     title?: boolean;
     description?: boolean;
-    price?: boolean;
     genre?: boolean;
     cover?: boolean;
     previewAudio?: boolean;
     chapters?: boolean;
   }>({});
   const [showErrors, setShowErrors] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
 
   const handlePreviewAudioChange = (file: File | null) => {
     if (file) {
@@ -87,30 +91,48 @@ export default function StoriesPage() {
   const handleChapterAudioChange = async (index: number, file: File | null) => {
     if (!file) return;
 
-    const newChapters = [...chapters];
-    newChapters[index] = {
-      ...newChapters[index],
-      audio: file,
-      isUploading: true,
-      uploadProgress: 0
-    };
-    setChapters(newChapters);
+    try {
+      const newChapters = [...chapters];
+      newChapters[index] = {
+        ...newChapters[index],
+        audio: file,
+        isUploading: true,
+        uploadProgress: 0
+      };
+      setChapters(newChapters);
 
-    // Simulate upload progress
-    for (let i = 0; i <= 100; i += 10) {
-      await new Promise(resolve => setTimeout(resolve, 200));
-      const updatedChapters = [...newChapters];
-      updatedChapters[index].uploadProgress = i;
-      setChapters(updatedChapters);
+      // Calculate actual duration
+      const duration = await getAudioDuration(file);
+      
+      // Simulate upload progress
+      for (let i = 0; i <= 100; i += 10) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+        const updatedChapters = [...newChapters];
+        updatedChapters[index].uploadProgress = i;
+        setChapters(updatedChapters);
+      }
+
+      newChapters[index] = {
+        ...newChapters[index],
+        audioUrl: URL.createObjectURL(file),
+        duration: duration,
+        isUploading: false
+      };
+      setChapters(newChapters);
+      
+      toast.success(`Chapter ${index + 1} audio uploaded successfully (${duration} minutes)`);
+    } catch (error) {
+      toast.error(`Failed to process chapter ${index + 1} audio`);
+      console.error('Audio processing error:', error);
+      
+      const newChapters = [...chapters];
+      newChapters[index] = {
+        ...newChapters[index],
+        audio: null,
+        isUploading: false
+      };
+      setChapters(newChapters);
     }
-
-    // Create audio URL after upload complete
-    newChapters[index] = {
-      ...newChapters[index],
-      audioUrl: URL.createObjectURL(file),
-      isUploading: false
-    };
-    setChapters(newChapters);
   };
 
   const addChapter = () => {
@@ -125,8 +147,7 @@ export default function StoriesPage() {
   const validateForm = () => {
     const newErrors = {
       title: storyTitle.trim() === '',
-      description: description.trim().length < 50,
-      price: parseFloat(price) <= 0,
+      description: description.trim().length <25,
       genre: genre === '',
       cover: cover === null,
       previewAudio: previewAudio === null,
@@ -152,39 +173,84 @@ export default function StoriesPage() {
     setShowErrors(true);
     
     if (!validateForm()) {
-      // Scroll to the first error
       const firstErrorField = document.querySelector('.error-field');
       firstErrorField?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
 
-    const formData = new FormData();
-    formData.append('storyTitle', storyTitle);
-    formData.append('price', price);
-    formData.append('description', description);
-    formData.append('genre', genre);
-    if (cover) formData.append('cover', cover);
-    if (previewAudio) formData.append('previewAudio', previewAudio);
-    
-    chapters.forEach((chapter, index) => {
-      if (chapter.title) formData.append(`chapter${index}Title`, chapter.title);
-      if (chapter.audio) formData.append(`chapter${index}Audio`, chapter.audio);
-    });
-    
-    // TODO: Implement API call to upload story
+    setIsPublishing(true);
+    try {
+      const formData = new FormData();
+      formData.append('storyTitle', storyTitle);
+      formData.append('premiumStatus', isPremium.toString());
+      formData.append('description', description);
+      formData.append('genre', genre);
+      formData.append('cover', cover as Blob);
+      formData.append('previewAudio', previewAudio as Blob);
+      formData.append('noOfChapters', chapters.length.toString());
+      
+      // Add loading toast
+      const loadingToast = toast.loading('Publishing your story...');
+      
+      chapters.forEach((chapter, index) => {
+        formData.append(`chapter${index}Title`, chapter.title);
+        formData.append(`chapter${index}Audio`, chapter.audio as Blob);
+        // Ensure duration is a valid number
+        const duration = typeof chapter.duration === 'number' ? chapter.duration : 0;
+        formData.append(`chapter${index}Duration`, duration.toString());
+      });
+
+      const response = await fetch('/api/stories', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Upload failed');
+      }
+
+      // Dismiss loading toast and show success
+      toast.dismiss(loadingToast);
+      toast.success('Story published successfully!', {
+        description: 'Your story is now available in your library.'
+      });
+
+      // Optional: Clear form or redirect
+      // router.push(`/stories/${data.storyId}`);
+      
+    } catch (error) {
+      toast.error('Failed to publish story', {
+        description: error instanceof Error ? error.message : 'Please try again later'
+      });
+      console.error('Upload error:', error);
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   return (
     <div className="container mx-auto p-6 max-w-4xl">
-      <div className="flex items-center gap-2 mb-8">
-        <BookOpen className="w-8 h-8" />
-        <h1 className="text-3xl font-bold">Upload New Story</h1>
+      <div className="flex items-center gap-3 mb-8">
+        <div className="bg-[#5956E9]/10 p-3 rounded-lg">
+          <BookOpen className="w-7 h-7 text-[#5956E9]" />
+        </div>
+        <div>
+          <h1 className="text-3xl font-bold">Publish New Story</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Share your story with the world
+          </p>
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
-        <Card>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <Card className="border-2 border-muted">
           <CardHeader>
-            <CardTitle>Story Details</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <div className="h-6 w-1 bg-[#5956E9] rounded-full" />
+              Story Details
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid md:grid-cols-3 gap-6">
@@ -209,28 +275,32 @@ export default function StoriesPage() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   required
-                  placeholder="Enter story description (minimum 50 characters)"
+                  placeholder="Enter story description (minimum 25 characters)"
                   className={`w-full min-h-[150px] p-2 rounded-md border 
                     ${showErrors && errors.description ? 'border-red-500 focus:ring-red-500' : ''}`}
                 />
-                <div className={`text-sm ${description.length < 50 ? 'text-red-500' : 'text-muted-foreground'}`}>
-                  {description.length}/50 characters minimum
+                <div className={`text-sm ${description.length < 25 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                  {description.length}/25 characters minimum
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="price">Price ($)</Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={price}
-                      onChange={(e) => setPrice(e.target.value)}
-                      required
-                      placeholder="Enter price"
-                      className={`w-full ${showErrors && errors.price ? 'border-red-500 focus:ring-red-500' : ''}`}
-                    />
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="premium-toggle">Story Type</Label>
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="premium-toggle"
+                        checked={isPremium}
+                        onCheckedChange={setIsPremium}
+                      />
+                      <Label htmlFor="premium-toggle" className="cursor-pointer">
+                        {isPremium ? 'Premium Story' : 'Free Story'}
+                      </Label>
+                    </div>
+                    {isPremium && (
+                      <p className="text-sm text-muted-foreground">
+                        Premium stories are only accessible to premium subscribers
+                      </p>
+                    )}
                   </div>
                   <div>
                     <Label htmlFor="genre">Genre</Label>
@@ -292,9 +362,12 @@ export default function StoriesPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-2 border-muted">
           <CardHeader>
-            <CardTitle>Preview Audio</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <div className="h-6 w-1 bg-[#5956E9] rounded-full" />
+              Preview Audio
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -320,16 +393,28 @@ export default function StoriesPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-2 border-muted">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Chapters</CardTitle>
-            <Button type="button" onClick={addChapter} variant="outline" size="sm">
+            <CardTitle className="flex items-center gap-2">
+              <div className="h-6 w-1 bg-[#5956E9] rounded-full" />
+              Chapters
+            </CardTitle>
+            <Button 
+              type="button" 
+              onClick={addChapter} 
+              variant="outline" 
+              size="sm"
+              className="border-[#5956E9] text-[#5956E9] hover:bg-[#5956E9]/10"
+            >
               <Plus className="w-4 h-4 mr-2" /> Add Chapter
             </Button>
           </CardHeader>
           <CardContent className="space-y-6">
             {chapters.map((chapter, index) => (
-              <div key={index} className="relative p-6 border rounded-xl bg-card">
+              <div 
+                key={index} 
+                className="relative p-6 border-2 border-muted rounded-xl bg-card hover:border-[#5956E9]/30 transition-colors"
+              >
                 <div className="absolute right-4 top-4">
                   {index > 0 && (
                     <Button
@@ -408,20 +493,28 @@ export default function StoriesPage() {
           <Button 
             type="submit" 
             size="lg"
+            disabled={isPublishing}
+            className="bg-[#5956E9] hover:bg-[#4845c7] text-white px-8"
           >
-            Upload Story
+            {isPublishing ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Publishing...
+              </>
+            ) : (
+              'Publish'
+            )}
           </Button>
         </div>
 
         {/* Error summary alert */}
         {showErrors && Object.values(errors).some(error => error) && (
-          <Alert variant="destructive" className="mt-4">
-            <AlertDescription>
-              Please correct the following errors:
-              <ul className="list-disc pl-4 mt-2">
+          <Alert variant="destructive" className="mt-4 border-2">
+            <AlertDescription className="space-y-2">
+              <p className="font-medium">Please correct the following errors:</p>
+              <ul className="list-disc pl-4 space-y-1 text-sm">
                 {errors.title && <li>Enter a story title</li>}
-                {errors.description && <li>Description must be at least 50 characters</li>}
-                {errors.price && <li>Enter a valid price</li>}
+                {errors.description && <li>Description must be at least 25 characters</li>}
                 {errors.genre && <li>Select a genre</li>}
                 {errors.cover && <li>Upload a cover image</li>}
                 {errors.previewAudio && <li>Upload a preview audio</li>}

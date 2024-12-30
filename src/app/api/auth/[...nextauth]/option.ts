@@ -121,6 +121,7 @@ const options: NextAuthOptions = {
             name: user.user.name,
             image: user.user.image || null, // Changed default to null
             email: user.user.email,
+            isVerified: true,
           });
           await newUser.save();
           console.log("User created ");

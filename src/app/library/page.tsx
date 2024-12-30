@@ -6,97 +6,17 @@ import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import LoginModal from '@/components/LoginModal'; // Add this import
 import { useRouter, useSearchParams } from 'next/navigation';
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge"; // Add this import
 
 const categories = [
   { id: 'all', label: 'All' },
-  { id: 'motivational', label: 'Motivational' },
-  { id: 'stories', label: 'Stories' },
-  { id: 'horror', label: 'Horror' },
-  { id: 'romance', label: 'Romance' },
-  { id: 'mystery', label: 'Mystery' }
-];
-
-const allBooks = [
-  {
-    id: 1,
-    title: "The Silent Echo",
-    author: "Sarah Mitchell",
-    image: "https://images.unsplash.com/photo-1544947950-fa07a98d237f",
-    category: "Mystery",
-    price: 299,
-    description: "A thrilling mystery that will keep you on the edge of your seat.",
-    duration: "12h 30m"
-  },
-  {
-    id: 2,
-    title: "Beyond the Horizon",
-    author: "James Cooper",
-    image: "https://images.unsplash.com/photo-1543002588-bfa74002ed7e",
-    category: "Mystery",
-    price: 349,
-    description: "An epic journey through space and time.",
-    duration: "14h 15m"
-  },
-  {
-    id: 3,
-    title: "Whispers of the Past",
-    author: "Emily Carter",
-    image: "https://images.unsplash.com/photo-1512820790803-83ca734da794",
-    category: "Mystery",
-    price: 399,
-    description: "A captivating tale set in the Victorian era.",
-    duration: "10h 45m"
-  },
-  {
-    id: 4,
-    title: "The Last Frontier",
-    author: "Michael Brown",
-    image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f",
-    category: "Mystery",
-    price: 299,
-    description: "An exhilarating adventure in the wild.",
-    duration: "11h 20m"
-  },
-  {
-    id: 5,
-    title: "Echoes of Eternity",
-    author: "Laura White",
-    image: "https://images.unsplash.com/photo-1532012197267-da84d127e765",
-    category: "Mystery",
-    price: 349,
-    description: "A magical journey through a mystical land.",
-    duration: "13h 50m"
-  },
-  {
-    id: 6,
-    title: "Mind Over Matter",
-    author: "Robert Johnson",
-    image: "https://images.unsplash.com/photo-1589829085413-56de8ae18c73",
-    category: "Motivational",
-    price: 299,
-    description: "Transform your mindset and achieve your goals.",
-    duration: "8h 45m"
-  },
-  {
-    id: 7,
-    title: "Haunted Hills",
-    author: "Patricia Blake",
-    image: "https://images.unsplash.com/photo-1589829085413-56de8ae18c73",
-    category: "Horror",
-    price: 329,
-    description: "A spine-chilling tale of supernatural encounters.",
-    duration: "10h 15m"
-  },
-  {
-    id: 8,
-    title: "Love in Paris",
-    author: "Sophie Martin",
-    image: "https://images.unsplash.com/photo-1543002588-bfa74002ed7e",
-    category: "Romance",
-    price: 279,
-    description: "A romantic journey through the city of love.",
-    duration: "9h 30m"
-  },
+  { id: 'Fiction', label: 'Fiction' },
+  { id: 'Non-Fiction', label: 'Non-Fiction' },
+  { id: 'Mystery', label: 'Mystery' },
+  { id: 'Romance', label: 'Romance' },
+  { id: 'Horror', label: 'Horror' },
+  { id: 'Experience', label: 'Experience' }
 ];
 
 export default function LibraryPage() {
@@ -105,12 +25,15 @@ export default function LibraryPage() {
   const { data: session } = useSession();
   const [isProfileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get('genre') || 'all');
-  const [filteredBooks, setFilteredBooks] = useState(allBooks);
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isLanguageDropdownOpen, setLanguageDropdownOpen] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('Hindi');
   const [isMobileNavOpen, setMobileNavOpen] = useState(false);
+  const [stories, setStories] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
 
   // Add click outside handler
   useEffect(() => {
@@ -148,16 +71,6 @@ export default function LibraryPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    if (selectedCategory === 'all') {
-      setFilteredBooks(allBooks);
-    } else {
-      setFilteredBooks(allBooks.filter(book => 
-        book.category.toLowerCase() === selectedCategory.toLowerCase()
-      ));
-    }
-  }, [selectedCategory]);
-
   // Add this function to handle login button click
   const handleLoginClick = () => {
     setIsLoginModalOpen(true);
@@ -194,6 +107,37 @@ export default function LibraryPage() {
     router.push(`/library?${params.toString()}`);
     setSelectedCategory(categoryId);
   };
+
+  const fetchStories = async (page: number, selectedGenre: string) => {
+    try {
+      setIsLoading(true);
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '12',
+      });
+      
+      if (selectedGenre !== 'all') {
+        params.append('genre', selectedGenre);
+      }
+
+      const response = await fetch(`/api/stories/public?${params}`);
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.error);
+
+      setStories(data.stories);
+      setTotalPages(data.totalPages);
+      setCurrentPage(data.currentPage);
+    } catch (error) {
+      toast.error('Failed to load stories');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStories(currentPage, selectedCategory);
+  }, [currentPage, selectedCategory]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -637,64 +581,98 @@ export default function LibraryPage() {
 
       <div className="pt-24 pb-12 px-4 md:px-8">
         <div className="max-w-[1500px] mx-auto">
-          {filteredBooks.length === 0 ? (
+          {isLoading ? (
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+              {Array(12).fill(0).map((_, i) => (
+                <div key={i} className="animate-pulse h-full">
+                  <div className="bg-white rounded-xl overflow-hidden h-full flex flex-col">
+                    <div className="aspect-[3/4] bg-gray-200" />
+                    <div className="p-4 flex-grow space-y-3">
+                      <div className="h-5 bg-gray-200 rounded w-3/4" />
+                      <div className="h-4 bg-gray-200 rounded w-1/2" />
+                      <div className="space-y-2">
+                        <div className="h-4 bg-gray-200 rounded w-full" />
+                        <div className="h-4 bg-gray-200 rounded w-2/3" />
+                      </div>
+                      <div className="pt-4 mt-auto">
+                        <div className="h-3 bg-gray-200 rounded w-24" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : stories.length === 0 ? (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="text-center py-20"
             >
-              <p className="text-gray-500 text-lg">No books found in this category.</p>
+              <p className="text-gray-500 text-lg">No stories found in this category.</p>
             </motion.div>
           ) : (
-            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-              <AnimatePresence mode="wait">
-                {filteredBooks.map((book, index) => (
-                  <motion.div
-                    key={book.id}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ 
-                      opacity: 1, 
-                      x: 0,
-                      transition: { 
-                        duration: 0.2,
-                        delay: index * 0.05
-                      }
-                    }}
-                    exit={{ 
-                      opacity: 0,
-                      x: -20,
-                      transition: { duration: 0.15 }
-                    }}
-                  >
-                    <Link href={`/books/${book.id}`} className="group block transform transition-all duration-300 hover:-translate-y-2">
-                      <div className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 group-hover:shadow-[#5956E9]/20">
-                        <div className="aspect-[3/4] relative overflow-hidden">
-                          <Image
-                            src={book.image}
-                            alt={book.title}
-                            fill
-                            className="object-cover transition-all duration-500 group-hover:scale-110 group-hover:rotate-2"
-                          />
-                        </div>
-                        <div className="p-4 space-y-2">
-                          <div className="space-y-1">
-                            <span className="text-sm text-purple-600 transition-colors duration-300 group-hover:text-[#5956E9]">{book.category}</span>
-                            <h2 className="font-semibold text-lg text-gray-900 line-clamp-1 transition-colors duration-300 group-hover:text-[#5956E9]">
-                              {book.title}
+            <>
+              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                <AnimatePresence mode="wait">
+                  {stories.map((story, index) => (
+                    <motion.div
+                      key={story._id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                    >
+                      <Link href={`/books/${story._id}`} className="group block h-full">
+                        <div className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 group-hover:shadow-[#5956E9]/20 h-full flex flex-col">
+                          <div className="aspect-[3/4] relative overflow-hidden">
+                            <Image
+                              src={story.coverImage}
+                              alt={story.title}
+                              fill
+                              className="object-cover transition-transform group-hover:scale-105"
+                            />
+                            <Badge 
+                              variant={story.premiumStatus ? "default" : "secondary"}
+                              className="absolute top-3 right-3 z-10"
+                            >
+                              {story.premiumStatus ? 'Premium' : 'Free'}
+                            </Badge>
+                          </div>
+                          <div className="p-4 flex flex-col flex-grow">
+                            <h2 className="font-semibold text-lg text-gray-900 line-clamp-1 mb-1">
+                              {story.title}
                             </h2>
-                            <p className="text-gray-600 text-sm transition-colors duration-300 group-hover:text-gray-800">by {book.author}</p>
-                          </div>
-                          <div className="flex items-center justify-between pt-2">
-                            <span className="font-bold text-[#5956E9] transition-all duration-300 group-hover:scale-110">₹{book.price}</span>
-                            <span className="text-sm text-gray-500 transition-colors duration-300 group-hover:text-gray-700">{book.duration}</span>
+                            <p className="text-gray-600 text-sm mb-2">by {story.authorName}</p>
+                            <p className="text-sm text-gray-500 line-clamp-2 flex-grow">
+                              {story.description}
+                            </p>
+                            <div className="mt-4 pt-4 border-t">
+                              <p className="text-xs text-gray-400">
+                                {new Date(story.createdAt).toLocaleDateString()}
+                              </p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </Link>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
+                      </Link>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+
+              {totalPages > 1 && (
+                <div className="mt-8 flex justify-center gap-2">
+                  {Array.from({ length: totalPages }, (_, i) => (
+                    <Button
+                      key={i + 1}
+                      variant={currentPage === i + 1 ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(i + 1)}
+                    >
+                      {i + 1}
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
