@@ -1,21 +1,29 @@
-import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import connectDB from '../../db/connect';
+import { NextResponse, NextRequest } from 'next/server';
 import { Story } from '../../model/storie';
-import authOptions from '../../auth/[...nextauth]/option';
+import connectDB from '../../db/connect';
+import { getToken } from 'next-auth/jwt';
 
-export async function GET() {
+export const dynamic = 'force-dynamic';
+
+export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const token = await getToken({ req: request });
+    
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
     }
 
     await connectDB();
-    
+
     const stories = await Story.find({
-      likes: session.user.email
-    }).sort({ createdAt: -1 });
+      likes: token.sub // using sub from JWT token which contains the user ID
+    })
+    .select('title description coverImage genre authorName premiumStatus createdAt')
+    .sort({ createdAt: -1 })
+    .lean();
 
     return NextResponse.json({ stories });
   } catch (error) {

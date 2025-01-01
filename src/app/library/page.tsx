@@ -8,6 +8,8 @@ import LoginModal from '@/components/LoginModal'; // Add this import
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge"; // Add this import
+import { Suspense } from 'react';
+// import LibraryContent from './LibraryContent';
 
 const categories = [
   { id: 'all', label: 'All' },
@@ -19,12 +21,24 @@ const categories = [
   { id: 'Experience', label: 'Experience' }
 ];
 
-export default function LibraryPage() {
+export default function LibraryPage({
+  searchParams,
+}: {
+  searchParams: { genre?: string };
+}) {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LibraryContent initialGenre={searchParams.genre || 'all'} />
+    </Suspense>
+  );
+}
+
+function LibraryContent({ initialGenre }: { initialGenre: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session } = useSession();
   const [isProfileDropdownOpen, setProfileDropdownOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState(searchParams.get('genre') || 'all');
+  const [selectedCategory, setSelectedCategory] = useState(initialGenre);
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isLanguageDropdownOpen, setLanguageDropdownOpen] = useState(false);
