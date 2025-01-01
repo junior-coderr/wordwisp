@@ -3,11 +3,12 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Button } from "@/components/ui/button";
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import { Badge } from "@/components/ui/badge"; // Add this import
 import BookDetailSkeleton from '@/components/BookDetailSkeleton';
 import BookNotFound from '@/components/BookNotFound';
+import { useSession } from 'next-auth/react';
 
 interface Story {
   _id: string;
@@ -25,14 +26,17 @@ interface Story {
     audioUrl: string;
     duration: number;
   };
+  isLiked?: boolean;
 }
 
 export default function BookPage({ params }: { params: { id: string } }) {
   const [story, setStory] = useState<Story | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const router = useRouter();
+  const { data: session } = useSession();
 
   useEffect(() => {
     const fetchStory = async () => {
@@ -52,6 +56,22 @@ export default function BookPage({ params }: { params: { id: string } }) {
     fetchStory();
   }, [params.id]);
 
+  useEffect(() => {
+    const fetchLikeStatus = async () => {
+      if (!session?.user) return;
+      
+      try {
+        const response = await fetch(`/api/stories/${params.id}/like`);
+        const data = await response.json();
+        setIsLiked(data.liked);
+      } catch (error) {
+        console.error('Error fetching like status:', error);
+      }
+    };
+
+    fetchLikeStatus();
+  }, [params.id, session]);
+
   const handlePlayPause = async () => {
     if (isPlaying) {
       audioRef.current?.pause();
@@ -69,6 +89,34 @@ export default function BookPage({ params }: { params: { id: string } }) {
     }
   };
 
+  const handleListenClick = () => {
+    router.push(`/listen/${params.id}`);
+  };
+
+  const handleLikeToggle = async () => {
+    if (!session?.user) {
+      toast.error('Please sign in to like stories');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/stories/${params.id}/like`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!response.ok) throw new Error('Failed to update like status');
+      
+      const data = await response.json();
+      setIsLiked(data.liked);
+      toast.success(data.liked ? 'Added to favorites' : 'Removed from favorites');
+    } catch (error) {
+      toast.error('Failed to update like status');
+    }
+  };
+
   if (isLoading) return <BookDetailSkeleton />;
   if (!story) return <BookNotFound />;
 
@@ -76,7 +124,7 @@ export default function BookPage({ params }: { params: { id: string } }) {
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       {/* Enhanced Header */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-white/70 backdrop-blur-md border-b shadow-sm">
-        <div className="max-w-[1500px] mx-auto px-6 py-5 flex items-center gap-4">
+        <div className="max-w-[1500px] mx-auto px-6 py-5 flex items-center justify-between">
           <button
             onClick={() => router.back()}
             className="flex items-center gap-2 text-[#5956E9] hover:text-[#4745BB] transition-all hover:scale-105"
@@ -86,6 +134,46 @@ export default function BookPage({ params }: { params: { id: string } }) {
             </svg>
             <span className="text-sm font-medium">Back to Books</span>
           </button>
+
+          <motion.button
+            onClick={handleLikeToggle}
+            whileTap={{ scale: 0.9 }}
+            className={`group flex items-center gap-2 px-4 py-2 rounded-full 
+              ${isLiked 
+                ? 'bg-red-50 text-red-500 hover:bg-red-100' 
+                : 'bg-gray-50 text-gray-600 hover:bg-gray-100'} 
+              transition-all duration-300 ease-in-out`}
+          >
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={isLiked ? 'liked' : 'unliked'}
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.8, opacity: 0 }}
+                transition={{ 
+                  type: "spring",
+                  stiffness: 300,
+                  damping: 20
+                }}
+              >
+                {isLiked ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" 
+                    className="w-6 h-6 transform transition-transform duration-300 group-hover:scale-110">
+                    <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} 
+                    stroke="currentColor" 
+                    className="w-6 h-6 transform transition-transform duration-300 group-hover:scale-110">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                  </svg>
+                )}
+              </motion.div>
+            </AnimatePresence>
+            <span className="text-sm font-medium">
+              {isLiked ? 'Liked' : 'Like'}
+            </span>
+          </motion.button>
         </div>
       </div>
 
@@ -154,9 +242,9 @@ export default function BookPage({ params }: { params: { id: string } }) {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h2 className="text-2xl font-bold text-gray-900">Audio Preview</h2>
-                    <span className="text-sm text-gray-500">
+                    {/* <span className="text-sm text-gray-500">
                       {Math.floor(story.previewChapter.duration)} min
-                    </span>
+                    </span> */}
                   </div>
                   <Button
                     variant="outline"
@@ -194,6 +282,7 @@ export default function BookPage({ params }: { params: { id: string } }) {
               <Button 
                 size="lg" 
                 className="w-full bg-[#5956E9] hover:bg-[#4745BB] text-lg h-16 rounded-xl shadow-lg shadow-[#5956E9]/25 hover:scale-[1.02] transition-all duration-200"
+                onClick={handleListenClick}  // Add this line
               >
                 {story.premiumStatus ? (
                   <>

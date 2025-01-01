@@ -81,6 +81,10 @@ const storySchema = new mongoose.Schema({
     type: String,
     required: [true, 'Preview audio is required']
   },
+  listens: {
+    type: Number,
+    default: 0
+  },
   createdAt: {
     type: Date,
     default: Date.now
@@ -109,6 +113,26 @@ const storyMediaSchema = new mongoose.Schema({
 // Indexes for better query performance
 storyMediaSchema.index({ storyId: 1 });
 
+// Schema for tracking unique listeners
+const listenerTrackSchema = new mongoose.Schema({
+  storyId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Story',
+    required: true
+  },
+  userEmail: {
+    type: String,
+    required: true
+  },
+  lastListenedAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
+// Compound index to ensure unique combination of story and user
+listenerTrackSchema.index({ storyId: 1, userEmail: 1 }, { unique: true });
+
 // Update timestamp middleware
 storySchema.pre('save', function(next) {
   this.updatedAt = new Date();
@@ -118,3 +142,4 @@ storySchema.pre('save', function(next) {
 // Export models
 export const Story = mongoose.models.Story || mongoose.model('Story', storySchema);
 export const StoryMedia = mongoose.models.StoryMedia || mongoose.model('StoryMedia', storyMediaSchema);
+export const ListenerTrack = mongoose.models.ListenerTrack || mongoose.model('ListenerTrack', listenerTrackSchema);

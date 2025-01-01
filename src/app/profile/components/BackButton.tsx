@@ -30,7 +30,7 @@ export const BackButton = ({ className = '' }: BackButtonProps) => {
           d="M10 19l-7-7m0 0l7-7m-7 7h18"
         />
       </svg>
-      <span className="font-medium">Back</span>
+      <span className="font-medium"></span>
     </motion.button>
   );
 }

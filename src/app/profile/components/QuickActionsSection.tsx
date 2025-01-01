@@ -63,9 +63,10 @@ export function QuickActionsSection({ userType = 'listener' }: QuickActionsSecti
         </Link>
       )}
 
-      <Link href="/purchased" className="h-full">
-        <Card className="group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer bg-gradient-to-br from-white to-gray-50/80 border-2 border-transparent hover:border-[#5956E9]/20 h-full"> {/* Added h-full */}
-          <CardHeader className="p-6 h-full flex flex-col"> {/* Added h-full and flex flex-col */}
+      {/* Replace the Purchased Stories Link with Liked Stories */}
+      <Link href="/liked" className="h-full">
+        <Card className="group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer bg-gradient-to-br from-white to-gray-50/80 border-2 border-transparent hover:border-[#5956E9]/20 h-full">
+          <CardHeader className="p-6 h-full flex flex-col">
             <div className="flex items-start gap-4">
               <div className="p-3 rounded-xl bg-[#5956E9]/10 text-[#5956E9] group-hover:scale-110 transition-transform">
                 <svg
@@ -78,21 +79,21 @@ export function QuickActionsSection({ userType = 'listener' }: QuickActionsSecti
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
                   />
                 </svg>
               </div>
               <div className="space-y-1">
                 <CardTitle className="text-xl font-semibold text-gray-900 group-hover:text-[#5956E9] transition-colors">
-                  Purchased Stories
+                  Liked Stories
                 </CardTitle>
                 <CardDescription className="text-sm text-gray-500 group-hover:text-gray-600">
-                  Access your collection of bought stories and audiobooks
+                  View your collection of favorite stories
                 </CardDescription>
               </div>
             </div>
             <div className="mt-4 flex items-center text-[#5956E9] text-sm font-medium">
-              <span className="group-hover:mr-2 transition-all">View Library</span>
+              <span className="group-hover:mr-2 transition-all">View Collection</span>
               <svg 
                 className="w-4 h-4 opacity-0 -ml-4 group-hover:ml-0 group-hover:opacity-100 transition-all"
                 xmlns="http://www.w3.org/2000/svg" 

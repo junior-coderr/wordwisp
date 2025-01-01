@@ -4,6 +4,7 @@ import authOptions from "@/app/api/auth/[...nextauth]/option";
 import { Story, StoryMedia } from '../model/storie';
 import User from '../model/user';
 import { uploadToBlob, generateBlobName } from '@/lib/azure-storage';
+import { uploadToGoogleCloud } from '@/lib/google-storage';
 import connectDB from '../db/connect';
 
 export async function POST(req: Request) {
@@ -16,7 +17,6 @@ export async function POST(req: Request) {
 
     await connectDB();
 
-
     const authorName = session.user.name || 'Anonymous';
     const formData = await req.formData();
     
@@ -26,11 +26,14 @@ export async function POST(req: Request) {
     const coverBlobName = generateBlobName(coverFile.name);
     const coverUrl = await uploadToBlob('story-covers', coverBlobName, coverBuffer, coverFile.name);
 
-    // Upload preview audio to Azure Blob
+    // Upload preview audio to Google Cloud
     const previewFile = formData.get('previewAudio') as File;
     const previewBuffer = Buffer.from(await previewFile.arrayBuffer());
-    const previewBlobName = generateBlobName(previewFile.name);
-    const previewUrl = await uploadToBlob('preview-audios', previewBlobName, previewBuffer, previewFile.name);
+    const previewUrl = await uploadToGoogleCloud(
+      previewFile.name,
+      previewBuffer,
+      previewFile.type || 'audio/mpeg'
+    );
 
     // Create the story document
     const story = await Story.create({
@@ -45,15 +48,18 @@ export async function POST(req: Request) {
       noOfChapters: parseInt(formData.get('noOfChapters') as string),
     });
 
-    // Upload chapter audios and create StoryMedia document
+    // Upload chapter audios to Google Cloud
     const chapterAudios = [];
     const numChapters = parseInt(formData.get('noOfChapters') as string);
 
     for (let i = 0; i < numChapters; i++) {
       const chapterAudioFile = formData.get(`chapter${i}Audio`) as File;
       const chapterBuffer = Buffer.from(await chapterAudioFile.arrayBuffer());
-      const chapterBlobName = generateBlobName(chapterAudioFile.name);
-      const audioUrl = await uploadToBlob('chapter-audios', chapterBlobName, chapterBuffer, chapterAudioFile.name);
+      const audioUrl = await uploadToGoogleCloud(
+        chapterAudioFile.name,
+        chapterBuffer,
+        chapterAudioFile.type || 'audio/mpeg'
+      );
 
       const duration = parseFloat(formData.get(`chapter${i}Duration`) as string) || 0;
 

@@ -29,7 +29,7 @@ export async function uploadToBlob(containerName: string, blobName: string, data
   const blockBlobClient = containerClient.getBlockBlobClient(blobName);
   await blockBlobClient.upload(data, data.length, {
     blobHTTPHeaders: {
-      blobContentType: getContentType(originalFileName)
+      blobContentType: getContentType(originalFileName),
     }
   });
   
