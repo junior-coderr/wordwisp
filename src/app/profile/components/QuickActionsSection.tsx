@@ -109,7 +109,7 @@ export function QuickActionsSection({ userType = 'listener' }: QuickActionsSecti
         </Card>
       </Link>
 
-      <Link href="/help" className="h-full">
+      <Link href="/profile/help-support" className="h-full"> {/* Updated path */}
         <Card className="group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer bg-gradient-to-br from-white to-gray-50/80 border-2 border-transparent hover:border-[#5956E9]/20 h-full"> {/* Added h-full */}
           <CardHeader className="p-6 h-full flex flex-col"> {/* Added h-full and flex flex-col */}
             <div className="flex items-start gap-4">

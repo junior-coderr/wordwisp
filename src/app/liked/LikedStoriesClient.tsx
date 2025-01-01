@@ -14,50 +14,61 @@ interface Story {
 }
 
 export default function LikedStoriesClient({ initialStories }: { initialStories: Story[] }) {
-  if (!initialStories?.length) {
+  if (initialStories.length === 0) {
     return (
-      <div className="text-center py-10">
-        <p className="text-gray-600">No liked stories yet.</p>
+      <div className="text-center py-12">
+        <p className="text-gray-500 text-lg">No liked stories yet.</p>
+        <Link 
+          href="/library" 
+          className="text-[#5956E9] hover:underline inline-flex items-center gap-2 mt-4"
+        >
+          Browse Library
+          <svg 
+            className="w-4 h-4" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="2"
+          >
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </Link>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       {initialStories.map((story, index) => (
-        <Link href={`/books/${story._id}`} key={story._id}>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-            className="group relative flex flex-col h-full"
-          >
-            <div className="relative w-full aspect-[2/3] rounded-lg overflow-hidden">
-              <Image
-                src={story.coverImage}
-                alt={story.title}
-                fill
-                className="object-cover transition-transform duration-300 group-hover:scale-105"
-                sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 16vw"
-              />
-              <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors" />
-              <Badge 
-                variant={story.premiumStatus ? "default" : "secondary"}
-                className="absolute top-2 right-2 text-xs"
-              >
-                {story.premiumStatus ? 'Premium' : 'Free'}
-              </Badge>
+        <motion.div
+          key={story._id}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: index * 0.05 }}
+        >
+          <Link href={`/books/${story._id}`}>
+            <div className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all">
+              <div className="aspect-[3/4] relative">
+                <Image
+                  src={story.coverImage}
+                  alt={story.title}
+                  fill
+                  className="object-cover"
+                />
+                <Badge 
+                  variant={story.premiumStatus ? "default" : "secondary"}
+                  className="absolute top-3 right-3"
+                >
+                  {story.premiumStatus ? 'Premium' : 'Free'}
+                </Badge>
+              </div>
+              <div className="p-4">
+                <h2 className="font-semibold text-gray-900 mb-1">{story.title}</h2>
+                <p className="text-sm text-gray-500">by {story.authorName}</p>
+              </div>
             </div>
-            <div className="mt-2 space-y-1">
-              <h3 className="text-sm font-medium text-gray-900 group-hover:text-[#5956E9] transition-colors line-clamp-1">
-                {story.title}
-              </h3>
-              <p className="text-xs text-gray-600">
-                by {story.authorName}
-              </p>
-            </div>
-          </motion.div>
-        </Link>
+          </Link>
+        </motion.div>
       ))}
     </div>
   );

@@ -39,23 +39,17 @@ export default async function LikedStoriesPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto">
-        <div className="py-6 px-4 sm:px-6 lg:px-8">
-          <div className="border-b border-gray-200 pb-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <BackButton />
-              </div>
-              <h1 className="ml-4 text-2xl font-semibold leading-6 text-gray-900">
-                Liked Stories
-              </h1>
-            </div>
-          </div>
-          
-          <div className="mt-6">
-            <LikedStoriesClient initialStories={stories} />
+      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <div className="mb-8">
+          <div className="flex items-center space-x-4">
+            <BackButton />
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+              Liked Stories
+            </h1>
           </div>
         </div>
+
+        <LikedStoriesClient initialStories={stories} />
       </div>
     </div>
   );
