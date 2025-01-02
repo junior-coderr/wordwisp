@@ -7,12 +7,6 @@ import { uploadToBlob, generateBlobName } from '@/lib/azure-storage';
 import { uploadToGoogleCloud } from '@/lib/google-storage';
 import connectDB from '../db/connect';
 
-interface ChapterAudio {
-  title: string;
-  order: number;
-  audioUrl: string;
-  duration_inMinutes: number;
-}
 
 interface StoryResponse {
   message: string;
