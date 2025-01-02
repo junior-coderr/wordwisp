@@ -168,6 +168,20 @@ export default function StoriesPage() {
     return true;
   };
 
+  const resetForm = () => {
+    setStoryTitle('');
+    setDescription('');
+    setGenre('');
+    setIsPremium(false);
+    setCover(null);
+    setCoverPreviewUrl('');
+    setPreviewAudio(null);
+    setPreviewAudioUrl('');
+    setChapters([{ title: '', audio: null }]);
+    setShowErrors(false);
+    setErrors({});
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setShowErrors(true);
@@ -179,6 +193,9 @@ export default function StoriesPage() {
     }
 
     setIsPublishing(true);
+    // Add loading toast and store its ID
+    const loadingToastId = toast.loading('Publishing your story...');
+
     try {
       const formData = new FormData();
       formData.append('storyTitle', storyTitle);
@@ -189,13 +206,9 @@ export default function StoriesPage() {
       formData.append('previewAudio', previewAudio as Blob);
       formData.append('noOfChapters', chapters.length.toString());
       
-      // Add loading toast
-      const loadingToast = toast.loading('Publishing your story...');
-      
       chapters.forEach((chapter, index) => {
         formData.append(`chapter${index}Title`, chapter.title);
         formData.append(`chapter${index}Audio`, chapter.audio as Blob);
-        // Ensure duration is a valid number
         const duration = typeof chapter.duration === 'number' ? chapter.duration : 0;
         formData.append(`chapter${index}Duration`, duration.toString());
       });
@@ -212,15 +225,17 @@ export default function StoriesPage() {
       }
 
       // Dismiss loading toast and show success
-      toast.dismiss(loadingToast);
+      toast.dismiss(loadingToastId);
       toast.success('Story published successfully!', {
         description: 'Your story is now available in your library.'
       });
 
-      // Optional: Clear form or redirect
-      // router.push(`/stories/${data.storyId}`);
+      // Reset the form after successful upload
+      resetForm();
       
     } catch (error) {
+      // Dismiss loading toast before showing error
+      toast.dismiss(loadingToastId);
       toast.error('Failed to publish story', {
         description: error instanceof Error ? error.message : 'Please try again later'
       });

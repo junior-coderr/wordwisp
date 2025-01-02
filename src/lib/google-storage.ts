@@ -1,9 +1,9 @@
 import { Storage } from '@google-cloud/storage';
-import path from 'path';
+const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON);
 
 const storage = new Storage({
-  keyFilename: path.join(process.cwd(), 'google-credentials.json'),
-  projectId: 'apt-summer-446507-h3',
+  credentials,
+  projectId: credentials.project_id,
 });
 
 const BUCKET_NAME = 'wordwisp';
