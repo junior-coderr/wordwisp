@@ -1,5 +1,20 @@
 import { Storage } from '@google-cloud/storage';
-const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON);
+
+let credentials;
+try {
+  const credentialsString = process.env.GOOGLE_CREDENTIALS_JSON?.replace(/[\n\r]/g, '');
+  if (!credentialsString) {
+    throw new Error('GOOGLE_CREDENTIALS_JSON environment variable is not set');
+  }
+  credentials = JSON.parse(credentialsString);
+  
+  if (!credentials.project_id) {
+    throw new Error('Invalid credentials: project_id is missing');
+  }
+} catch (error) {
+  console.error('Error parsing Google Cloud credentials:', error);
+  throw new Error('Failed to initialize Google Cloud credentials');
+}
 
 const storage = new Storage({
   credentials,
