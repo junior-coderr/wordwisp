@@ -59,6 +59,10 @@ export async function POST(req: Request) {
       previewBuffer,
       previewFile.type || 'audio/mpeg'
     );
+    
+    if (!isValidUrl(previewUrl)) {
+      throw new Error('Invalid preview audio URL generated');
+    }
 
     // Create the story document
     const story = await Story.create({
@@ -99,7 +103,7 @@ export async function POST(req: Request) {
       );
 
       if (!isValidUrl(audioUrl)) {
-        throw new Error(`Invalid URL generated for chapter ${i}`);
+        throw new Error(`Invalid URL generated for chapter ${i + 1}`);
       }
 
       const duration = parseFloat(formData.get(`chapter${i}Duration`) as string) || 0;
@@ -134,9 +138,12 @@ export async function POST(req: Request) {
     return NextResponse.json(response);
 
   } catch (error) {
-    console.error('Error uploading story:', error);
+    console.error('Upload error details:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Error uploading story' }, 
+      { 
+        error: error instanceof Error ? error.message : 'Error uploading story',
+        details: error instanceof Error ? error.stack : undefined
+      }, 
       { status: 500 }
     );
   }
@@ -145,8 +152,10 @@ export async function POST(req: Request) {
 // Add URL validation helper
 function isValidUrl(urlString: string): boolean {
   try {
-    new URL(urlString);
-    return true;
+    const url = new URL(urlString);
+    return url.protocol === 'https:' && 
+           url.hostname === 'storage.googleapis.com' &&
+           url.pathname.length > 1;
   } catch {
     return false;
   }

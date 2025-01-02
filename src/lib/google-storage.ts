@@ -47,15 +47,19 @@ export async function uploadToGoogleCloud(
   contentType: string
 ): Promise<string> {
   try {
-    // Ensure bucket is initialized
     if (!bucket) {
       bucket = await initializeBucket();
     }
 
-    // Sanitize and encode the filename
-    const sanitizedName = encodeURIComponent(fileName.replace(/[^a-zA-Z0-9.-]/g, '_'));
+    // Sanitize filename - remove special characters and spaces
+    const sanitizedName = fileName
+      .toLowerCase()
+      .replace(/[^a-z0-9.-]/g, '-')
+      .replace(/\s+/g, '-');
+    
     const uniqueName = `${Date.now()}-${sanitizedName}`;
-    const file = bucket.file(`audios/${uniqueName}`);
+    const filePath = `audios/${uniqueName}`;
+    const file = bucket.file(filePath);
 
     const options = {
       resumable: false,
@@ -65,31 +69,23 @@ export async function uploadToGoogleCloud(
       },
     };
 
-    // Upload the file
     await file.save(buffer, options);
-
-    // Make the file public
     await file.makePublic();
 
-    // Generate and validate the URL
-    const url = new URL(`https://storage.googleapis.com/${bucket.name}/${file.name}`);
-    return url.toString();
+    // Construct URL using encodeURIComponent for the path components
+    const encodedBucket = encodeURIComponent(bucket.name);
+    const encodedFilePath = encodeURIComponent(filePath);
+    const publicUrl = `https://storage.googleapis.com/${encodedBucket}/${encodedFilePath}`;
+
+    // Validate the URL
+    try {
+      new URL(publicUrl);
+      return publicUrl;
+    } catch (urlError) {
+      throw new Error(`Invalid URL generated: ${urlError.message}`);
+    }
   } catch (error) {
     console.error('Detailed upload error:', error);
-    if (error instanceof Error) {
-      throw new Error(`Google Cloud Storage upload failed: ${error.message}`);
-    }
-    throw error;
+    throw new Error(`Google Cloud Storage upload failed: ${error.message}`);
   }
 }
-
-// // Helper function to check if bucket exists and is accessible
-// export async function checkBucketAccess(): Promise<boolean> {
-//   try {
-//     const [exists] = await storage.bucket(BUCKET_NAME).exists();
-//     return exists;
-//   } catch (error) {
-//     console.error('Error checking bucket access:', error);
-//     return false;
-//   }
-// }
