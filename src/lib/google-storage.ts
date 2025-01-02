@@ -9,13 +9,11 @@ const storage = new Storage({
   }
 });
 console.log('Google Cloud Storage initialized');
-console.log('Bucket name:', process.env.GOOGLE_BUCKET_NAME);
 console.log('Client email:', process.env.GOOGLE_CLIENT_EMAIL,
-  'Project ID:', process.env.GOOGLE_PROJECT_ID,
   'Private key:', process.env.GOOGLE_PRIVATE_KEY
 );
 
-console.log('private with new lines:', process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'));
+console.log('private with new lines:', process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'))
 
 const BUCKET_NAME = 'wordwisp';
 // Initialize bucket with creation if it doesn't exist
