@@ -1,13 +1,15 @@
 import { Storage } from '@google-cloud/storage';
-const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON);
+
 
 const storage = new Storage({
-  credentials,
-  projectId: credentials.project_id,
+  credentials: {
+    client_email: process.env.GOOGLE_CLIENT_EMAIL,
+    private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    project_id: process.env.GOOGLE_PROJECT_ID
+  }
 });
 
 const BUCKET_NAME = 'wordwisp';
-
 // Initialize bucket with creation if it doesn't exist
 async function initializeBucket() {
   try {
