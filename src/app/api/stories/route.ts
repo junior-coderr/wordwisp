@@ -7,6 +7,18 @@ import { uploadToBlob, generateBlobName } from '@/lib/azure-storage';
 import { uploadToGoogleCloud } from '@/lib/google-storage';
 import connectDB from '../db/connect';
 
+interface ChapterAudio {
+  title: string;
+  order: number;
+  audioUrl: string;
+  duration_inMinutes: number;
+}
+
+interface StoryResponse {
+  message: string;
+  storyId: string;
+}
+
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -17,8 +29,20 @@ export async function POST(req: Request) {
 
     await connectDB();
 
-    const authorName = session.user.name || 'Anonymous';
     const formData = await req.formData();
+    
+    // Validate required fields
+    const requiredFields = ['storyTitle', 'description', 'genre', 'noOfChapters'];
+    for (const field of requiredFields) {
+      if (!formData.get(field)) {
+        return NextResponse.json(
+          { error: `Missing required field: ${field}` },
+          { status: 400 }
+        );
+      }
+    }
+
+    const authorName = session.user.name || 'Anonymous';
     
     // Upload cover image to Azure Blob
     const coverFile = formData.get('cover') as File;
@@ -48,9 +72,17 @@ export async function POST(req: Request) {
       noOfChapters: parseInt(formData.get('noOfChapters') as string),
     });
 
+    // Validate chapter data
+    const numChapters = parseInt(formData.get('noOfChapters') as string);
+    if (isNaN(numChapters) || numChapters < 1) {
+      return NextResponse.json(
+        { error: 'Invalid number of chapters' },
+        { status: 400 }
+      );
+    }
+
     // Upload chapter audios to Google Cloud
     const chapterAudios = [];
-    const numChapters = parseInt(formData.get('noOfChapters') as string);
 
     for (let i = 0; i < numChapters; i++) {
       const chapterAudioFile = formData.get(`chapter${i}Audio`) as File;
@@ -85,15 +117,17 @@ export async function POST(req: Request) {
       }
     );
 
-    return NextResponse.json({ 
+    const response: StoryResponse = { 
       message: 'Story uploaded successfully',
-      storyId: story._id 
-    });
+      storyId: story._id.toString()
+    };
+
+    return NextResponse.json(response);
 
   } catch (error) {
     console.error('Error uploading story:', error);
     return NextResponse.json(
-      { error: 'Error uploading story' }, 
+      { error: error instanceof Error ? error.message : 'Error uploading story' }, 
       { status: 500 }
     );
   }
