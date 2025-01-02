@@ -9,6 +9,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge"; // Add this import
 import { Suspense } from 'react';
+import { Button } from '@/components/ui/button';
 // import LibraryContent from './LibraryContent';
 
 const categories = [

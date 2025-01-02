@@ -1,11 +1,21 @@
 import { Storage } from '@google-cloud/storage';
 
+// Validate required environment variables
+function validateEnvironment() {
+  const required = ['GOOGLE_CLIENT_EMAIL', 'GOOGLE_PRIVATE_KEY', 'GOOGLE_PROJECT_ID'];
+  const missing = required.filter(key => !process.env[key]);
+  if (missing.length > 0) {
+    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+  }
+}
+
+validateEnvironment();
 
 const storage = new Storage({
   credentials: {
-    client_email: process.env.GOOGLE_CLIENT_EMAIL,
-    private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    project_id: process.env.GOOGLE_PROJECT_ID
+    client_email: process.env.GOOGLE_CLIENT_EMAIL || '',
+    private_key: (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
+    project_id: process.env.GOOGLE_PROJECT_ID || ''
   }
 });
 console.log('Google Cloud Storage initialized');
@@ -15,7 +25,9 @@ console.log('Client email:', process.env.GOOGLE_CLIENT_EMAIL,
 
 console.log('private with new lines:', process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'))
 
-const BUCKET_NAME = 'wordwisp';
+const BUCKET_NAME = process.env.GOOGLE_STORAGE_BUCKET || 'wordwisp';
+const BASE_URL = `https://storage.googleapis.com/${BUCKET_NAME}`;
+
 // Initialize bucket with creation if it doesn't exist
 async function initializeBucket() {
   try {
@@ -51,6 +63,10 @@ export async function uploadToGoogleCloud(
       bucket = await initializeBucket();
     }
 
+    if (!fileName) {
+      throw new Error('Invalid file name provided');
+    }
+
     // Sanitize filename - remove special characters and spaces
     const sanitizedName = fileName
       .toLowerCase()
@@ -72,20 +88,18 @@ export async function uploadToGoogleCloud(
     await file.save(buffer, options);
     await file.makePublic();
 
-    // Construct URL using encodeURIComponent for the path components
-    const encodedBucket = encodeURIComponent(bucket.name);
-    const encodedFilePath = encodeURIComponent(filePath);
-    const publicUrl = `https://storage.googleapis.com/${encodedBucket}/${encodedFilePath}`;
+    // Construct safe URL
+    const safeFilePath = encodeURIComponent(filePath).replace(/%2F/g, '/');
+    const publicUrl = `${BASE_URL}/${safeFilePath}`;
 
-    // Validate the URL
-    try {
-      new URL(publicUrl);
-      return publicUrl;
-    } catch (urlError) {
-      throw new Error(`Invalid URL generated: ${urlError.message}`);
+    // Validate URL before returning
+    if (!publicUrl.startsWith('https://')) {
+      throw new Error('Invalid URL generated');
     }
+
+    return publicUrl;
   } catch (error) {
-    console.error('Detailed upload error:', error);
-    throw new Error(`Google Cloud Storage upload failed: ${error.message}`);
+    console.error('Upload error:', error);
+    throw new Error(`Storage upload failed: ${error.message}`);
   }
 }

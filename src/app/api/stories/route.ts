@@ -8,6 +8,7 @@ import { uploadToGoogleCloud } from '@/lib/google-storage';
 import connectDB from '../db/connect';
 
 
+
 interface StoryResponse {
   message: string;
   storyId: string;
@@ -38,31 +39,20 @@ export async function POST(req: Request) {
 
     const authorName = session.user.name || 'Anonymous';
     
-    // Validate and sanitize file names before upload
+    // Upload cover image to Azure Blob
     const coverFile = formData.get('cover') as File;
-    if (!coverFile?.name) {
-      throw new Error('Invalid cover file name');
-    }
-
     const coverBuffer = Buffer.from(await coverFile.arrayBuffer());
     const coverBlobName = generateBlobName(coverFile.name);
     const coverUrl = await uploadToBlob('story-covers', coverBlobName, coverBuffer, coverFile.name);
 
+    // Upload preview audio to Google Cloud
     const previewFile = formData.get('previewAudio') as File;
-    if (!previewFile?.name) {
-      throw new Error('Invalid preview audio file name');
-    }
-
     const previewBuffer = Buffer.from(await previewFile.arrayBuffer());
     const previewUrl = await uploadToGoogleCloud(
       previewFile.name,
       previewBuffer,
       previewFile.type || 'audio/mpeg'
     );
-    
-    if (!isValidUrl(previewUrl)) {
-      throw new Error('Invalid preview audio URL generated');
-    }
 
     // Create the story document
     const story = await Story.create({
@@ -91,20 +81,12 @@ export async function POST(req: Request) {
 
     for (let i = 0; i < numChapters; i++) {
       const chapterAudioFile = formData.get(`chapter${i}Audio`) as File;
-      if (!chapterAudioFile?.name) {
-        throw new Error(`Invalid chapter ${i} audio file name`);
-      }
-
       const chapterBuffer = Buffer.from(await chapterAudioFile.arrayBuffer());
       const audioUrl = await uploadToGoogleCloud(
         chapterAudioFile.name,
         chapterBuffer,
         chapterAudioFile.type || 'audio/mpeg'
       );
-
-      if (!isValidUrl(audioUrl)) {
-        throw new Error(`Invalid URL generated for chapter ${i + 1}`);
-      }
 
       const duration = parseFloat(formData.get(`chapter${i}Duration`) as string) || 0;
 
@@ -138,25 +120,10 @@ export async function POST(req: Request) {
     return NextResponse.json(response);
 
   } catch (error) {
-    console.error('Upload error details:', error);
+    console.error('Error uploading story:', error);
     return NextResponse.json(
-      { 
-        error: error instanceof Error ? error.message : 'Error uploading story',
-        details: error instanceof Error ? error.stack : undefined
-      }, 
+      { error: error instanceof Error ? error.message : 'Error uploading story' }, 
       { status: 500 }
     );
-  }
-}
-
-// Add URL validation helper
-function isValidUrl(urlString: string): boolean {
-  try {
-    const url = new URL(urlString);
-    return url.protocol === 'https:' && 
-           url.hostname === 'storage.googleapis.com' &&
-           url.pathname.length > 1;
-  } catch {
-    return false;
   }
 }
