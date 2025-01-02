@@ -74,13 +74,13 @@ export async function uploadToGoogleCloud(
   }
 }
 
-// Helper function to check if bucket exists and is accessible
-export async function checkBucketAccess(): Promise<boolean> {
-  try {
-    const [exists] = await storage.bucket(BUCKET_NAME).exists();
-    return exists;
-  } catch (error) {
-    console.error('Error checking bucket access:', error);
-    return false;
-  }
-}
+// // Helper function to check if bucket exists and is accessible
+// export async function checkBucketAccess(): Promise<boolean> {
+//   try {
+//     const [exists] = await storage.bucket(BUCKET_NAME).exists();
+//     return exists;
+//   } catch (error) {
+//     console.error('Error checking bucket access:', error);
+//     return false;
+//   }
+// }
