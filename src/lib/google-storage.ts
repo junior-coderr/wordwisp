@@ -2,18 +2,35 @@ import { Storage } from '@google-cloud/storage';
 
 let credentials;
 try {
-  const credentialsString = process.env.GOOGLE_CREDENTIALS_JSON?.replace(/[\n\r]/g, '');
+  let credentialsString = process.env.GOOGLE_CREDENTIALS_JSON || '';
+  
+  // Remove any wrapping single quotes if present
+  credentialsString = credentialsString.replace(/^'(.*)'$/, '$1');
+  
+  // Clean up any escaped characters and normalize whitespace
+  credentialsString = credentialsString
+    .replace(/\\n/g, '')
+    .replace(/\\"/g, '"')
+    .replace(/[\n\r\t]/g, '')
+    .trim();
+
   if (!credentialsString) {
     throw new Error('GOOGLE_CREDENTIALS_JSON environment variable is not set');
   }
-  credentials = JSON.parse(credentialsString);
+
+  try {
+    credentials = JSON.parse(credentialsString);
+  } catch (parseError) {
+    console.error('Raw credentials string:', credentialsString.substring(0, 50) + '...');
+    throw new Error(`JSON parsing failed: ${parseError.message}`);
+  }
   
   if (!credentials.project_id) {
     throw new Error('Invalid credentials: project_id is missing');
   }
 } catch (error) {
   console.error('Error parsing Google Cloud credentials:', error);
-  throw new Error('Failed to initialize Google Cloud credentials');
+  throw new Error('Failed to initialize Google Cloud credentials. Check your GOOGLE_CREDENTIALS_JSON format.');
 }
 
 const storage = new Storage({
