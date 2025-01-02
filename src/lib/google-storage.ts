@@ -1,73 +1,35 @@
-import { Storage } from '@google-cloud/storage';
-
-// Validate required environment variables
-const requiredEnvVars = ['GOOGLE_CLIENT_EMAIL', 'GOOGLE_PRIVATE_KEY', 'GOOGLE_PROJECT_ID'];
-for (const envVar of requiredEnvVars) {
-  if (!process.env[envVar]) {
-    throw new Error(`Missing required environment variable: ${envVar}`);
-  }
-}
-
-// Fix potential private key formatting issues
-const privateKey = process.env.GOOGLE_PRIVATE_KEY!
-  .replace(/\\n/g, '\n')
-  .replace(/^"(.*)"$/, '$1'); // Remove any wrapping quotes
+import { Storage, Bucket } from '@google-cloud/storage';
+const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON);
 
 const storage = new Storage({
-  credentials: {
-    client_email: process.env.GOOGLE_CLIENT_EMAIL,
-    private_key: privateKey,
-    project_id: process.env.GOOGLE_PROJECT_ID
-  },
-  projectId: process.env.GOOGLE_PROJECT_ID
+  credentials,
+  projectId: credentials.project_id,
 });
 
 const BUCKET_NAME = 'wordwisp';
 
-// Initialize bucket with better error handling
-async function initializeBucket() {
+// Initialize bucket with creation if it doesn't exist
+async function initializeBucket(): Promise<Bucket> {
   try {
-    const bucket = storage.bucket(BUCKET_NAME);
-    const [exists] = await bucket.exists();
-    
+    const [exists] = await storage.bucket(BUCKET_NAME).exists();
     if (!exists) {
-      const [newBucket] = await storage.createBucket(BUCKET_NAME, {
+      const [bucket] = await storage.createBucket(BUCKET_NAME, {
         location: 'US',
         storageClass: 'STANDARD',
         publicAccessPrevention: 'inherited',
       });
-      console.log(`Bucket ${BUCKET_NAME} created successfully`);
-      return newBucket;
+      console.log(`Bucket ${BUCKET_NAME} created.`);
+      return bucket;
     }
-    
-    return bucket;
+    return storage.bucket(BUCKET_NAME);
   } catch (error) {
-    console.error('Detailed bucket initialization error:', error);
-    if (error instanceof Error) {
-      throw new Error(`Bucket initialization failed: ${error.message}`);
-    }
-    throw error;
+    console.error('Error initializing bucket:', error);
+    throw new Error('Failed to initialize storage bucket');
   }
 }
 
-// Initialize bucket with retry mechanism
-let bucket: any;
-let initializationAttempts = 0;
-const MAX_ATTEMPTS = 3;
-
-async function ensureBucket() {
-  while (!bucket && initializationAttempts < MAX_ATTEMPTS) {
-    try {
-      initializationAttempts++;
-      bucket = await initializeBucket();
-    } catch (error) {
-      console.error(`Bucket initialization attempt ${initializationAttempts} failed:`, error);
-      if (initializationAttempts === MAX_ATTEMPTS) throw error;
-      await new Promise(resolve => setTimeout(resolve, 1000 * initializationAttempts));
-    }
-  }
-  return bucket;
-}
+// Initialize bucket and export for use
+let bucket: Bucket | null = null;
 
 export async function uploadToGoogleCloud(
   fileName: string,
@@ -77,7 +39,7 @@ export async function uploadToGoogleCloud(
   try {
     // Ensure bucket is initialized
     if (!bucket) {
-      bucket = await ensureBucket();
+      bucket = await initializeBucket();
     }
 
     const uniqueName = `${Date.now()}-${fileName}`;
@@ -98,7 +60,7 @@ export async function uploadToGoogleCloud(
     await file.makePublic();
 
     // Return the public URL
-    return `https://storage.googleapis.com/${bucket.name}/${file.name}`;
+    return `https://storage.googleapis.com/${BUCKET_NAME}/audios/${uniqueName}`;
   } catch (error) {
     console.error('Detailed upload error:', error);
     if (error instanceof Error) {
