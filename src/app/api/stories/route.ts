@@ -38,14 +38,21 @@ export async function POST(req: Request) {
 
     const authorName = session.user.name || 'Anonymous';
     
-    // Upload cover image to Azure Blob
+    // Validate and sanitize file names before upload
     const coverFile = formData.get('cover') as File;
+    if (!coverFile?.name) {
+      throw new Error('Invalid cover file name');
+    }
+
     const coverBuffer = Buffer.from(await coverFile.arrayBuffer());
     const coverBlobName = generateBlobName(coverFile.name);
     const coverUrl = await uploadToBlob('story-covers', coverBlobName, coverBuffer, coverFile.name);
 
-    // Upload preview audio to Google Cloud
     const previewFile = formData.get('previewAudio') as File;
+    if (!previewFile?.name) {
+      throw new Error('Invalid preview audio file name');
+    }
+
     const previewBuffer = Buffer.from(await previewFile.arrayBuffer());
     const previewUrl = await uploadToGoogleCloud(
       previewFile.name,
@@ -80,12 +87,20 @@ export async function POST(req: Request) {
 
     for (let i = 0; i < numChapters; i++) {
       const chapterAudioFile = formData.get(`chapter${i}Audio`) as File;
+      if (!chapterAudioFile?.name) {
+        throw new Error(`Invalid chapter ${i} audio file name`);
+      }
+
       const chapterBuffer = Buffer.from(await chapterAudioFile.arrayBuffer());
       const audioUrl = await uploadToGoogleCloud(
         chapterAudioFile.name,
         chapterBuffer,
         chapterAudioFile.type || 'audio/mpeg'
       );
+
+      if (!isValidUrl(audioUrl)) {
+        throw new Error(`Invalid URL generated for chapter ${i}`);
+      }
 
       const duration = parseFloat(formData.get(`chapter${i}Duration`) as string) || 0;
 
@@ -124,5 +139,15 @@ export async function POST(req: Request) {
       { error: error instanceof Error ? error.message : 'Error uploading story' }, 
       { status: 500 }
     );
+  }
+}
+
+// Add URL validation helper
+function isValidUrl(urlString: string): boolean {
+  try {
+    new URL(urlString);
+    return true;
+  } catch {
+    return false;
   }
 }

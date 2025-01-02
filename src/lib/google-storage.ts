@@ -52,7 +52,9 @@ export async function uploadToGoogleCloud(
       bucket = await initializeBucket();
     }
 
-    const uniqueName = `${Date.now()}-${fileName}`;
+    // Sanitize and encode the filename
+    const sanitizedName = encodeURIComponent(fileName.replace(/[^a-zA-Z0-9.-]/g, '_'));
+    const uniqueName = `${Date.now()}-${sanitizedName}`;
     const file = bucket.file(`audios/${uniqueName}`);
 
     const options = {
@@ -69,8 +71,9 @@ export async function uploadToGoogleCloud(
     // Make the file public
     await file.makePublic();
 
-    // Return the public URL
-    return `https://storage.googleapis.com/${bucket.name}/${file.name}`;
+    // Generate and validate the URL
+    const url = new URL(`https://storage.googleapis.com/${bucket.name}/${file.name}`);
+    return url.toString();
   } catch (error) {
     console.error('Detailed upload error:', error);
     if (error instanceof Error) {
