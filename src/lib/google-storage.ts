@@ -1,4 +1,4 @@
-import { Storage, Bucket } from '@google-cloud/storage';
+import { Storage } from '@google-cloud/storage';
 const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON);
 
 const storage = new Storage({
@@ -9,17 +9,16 @@ const storage = new Storage({
 const BUCKET_NAME = 'wordwisp';
 
 // Initialize bucket with creation if it doesn't exist
-async function initializeBucket(): Promise<Bucket> {
+async function initializeBucket() {
   try {
     const [exists] = await storage.bucket(BUCKET_NAME).exists();
     if (!exists) {
-      const [bucket] = await storage.createBucket(BUCKET_NAME, {
-        location: 'US',
+      await storage.createBucket(BUCKET_NAME, {
+        location: 'US', // or your preferred location
         storageClass: 'STANDARD',
         publicAccessPrevention: 'inherited',
       });
       console.log(`Bucket ${BUCKET_NAME} created.`);
-      return bucket;
     }
     return storage.bucket(BUCKET_NAME);
   } catch (error) {
@@ -29,7 +28,10 @@ async function initializeBucket(): Promise<Bucket> {
 }
 
 // Initialize bucket and export for use
-let bucket: Bucket | null = null;
+let bucket: any;
+initializeBucket()
+  .then((b) => { bucket = b; })
+  .catch(console.error);
 
 export async function uploadToGoogleCloud(
   fileName: string,
@@ -60,7 +62,7 @@ export async function uploadToGoogleCloud(
     await file.makePublic();
 
     // Return the public URL
-    return `https://storage.googleapis.com/${BUCKET_NAME}/audios/${uniqueName}`;
+    return `https://storage.googleapis.com/${bucket.name}/${file.name}`;
   } catch (error) {
     console.error('Detailed upload error:', error);
     if (error instanceof Error) {
